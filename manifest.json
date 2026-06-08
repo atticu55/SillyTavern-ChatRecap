@@ -1,12 +1,14 @@
 {
-  "display_name": "ChatRecap",
-  "loading_order": 50,
-  "requires": [],
-  "optional": [],
-  "js": "index.js",
-  "css": "style.css",
-  "author": "phampyk",
-  "version": "1.0.0",
-  "homePage": "https://github.com/atticu55/SillyTavern-ChatRecap",
-  "description": "Shows a 'Where you left off' recap popup when you return to a chat after being away."
+    "display_name": "Chat Recap",
+    "loading_order": 50,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "style.css",
+    "author": "phampyk",
+    "version": "1.0.0",
+    "homePage": "https://github.com/atticu55/SillyTavern-ChatRecap",
+    "hooks": {
+        "activate": "init"
+    }
 }
