@@ -9,6 +9,7 @@ const defaultSettings = Object.freeze({
     maxTokens: 256,
     promptTemplate: 'Summarize what has happened in this conversation so far. Keep it brief but include key events, decisions, and emotional beats.\n\n{{messages}}',
     showTimeAway: true,
+    preset: '',
 });
 
 let isGenerating = false;
@@ -63,6 +64,27 @@ function escapeHtml(text) {
     return d.innerHTML;
 }
 
+function getPresetNames() {
+    const select = document.querySelector('#preset_select');
+    if (!select) return [];
+    return Array.from(select.querySelectorAll('optgroup option, option')).map(o => ({
+        value: o.value,
+        text: o.textContent.trim(),
+    })).filter(o => o.value && o.value !== 'null');
+}
+
+async function applyPreset(presetName) {
+    if (!presetName) return;
+    const select = document.querySelector('#preset_select');
+    if (!select) return;
+    const opt = Array.from(select.options).find(o => o.textContent.trim() === presetName || o.value === presetName);
+    if (opt && select.value !== opt.value) {
+        select.value = opt.value;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        await new Promise(r => setTimeout(r, 300));
+    }
+}
+
 function formatTimeAway(lastActive) {
     if (!lastActive || typeof lastActive !== 'number') return '';
     const hours = (Date.now() - lastActive) / (1000 * 60 * 60);
@@ -85,17 +107,20 @@ async function generateRecap(history) {
     const prompt = s.promptTemplate.replace('{{messages}}', history);
     isGenerating = true;
     try {
+        if (s.preset) await applyPreset(s.preset);
+
         const { generateQuietPrompt, generateRaw } = scriptModule;
+        let result = null;
         if (typeof generateQuietPrompt === 'function') {
-            const r = await generateQuietPrompt({ quietPrompt: prompt, quietToLoud: false, skipWIAN: true, responseLength: s.maxTokens, removeReasoning: true });
-            return r?.trim() || null;
+            result = await generateQuietPrompt({ quietPrompt: prompt, quietToLoud: false, skipWIAN: true, responseLength: s.maxTokens, removeReasoning: true });
+            result = result?.trim() || null;
+        } else if (typeof generateRaw === 'function') {
+            result = await generateRaw({ prompt, systemPrompt: 'You are a helpful assistant that summarizes roleplay conversations concisely.', responseLength: s.maxTokens });
+            result = result?.trim() || null;
+        } else {
+            log('No generation API available');
         }
-        if (typeof generateRaw === 'function') {
-            const r = await generateRaw({ prompt, systemPrompt: 'You are a helpful assistant that summarizes roleplay conversations concisely.', responseLength: s.maxTokens });
-            return r?.trim() || null;
-        }
-        log('No generation API available');
-        return null;
+        return result;
     } catch (e) {
         log('Generation failed:', e);
         return null;
@@ -214,6 +239,12 @@ function initSettings() {
                 <div class="inline-drawer-content">
                     <div class="chat-recap-settings">
                         <div class="chat-recap-setting-row">
+                            <label for="chatrecap_preset">Preset</label>
+                            <select id="chatrecap_preset" class="text_pole wide100p">
+                                <option value="">Default (no preset)</option>
+                            </select>
+                        </div>
+                        <div class="chat-recap-setting-row">
                             <label for="chatrecap_threshold">Time Threshold (hours)</label>
                             <input id="chatrecap_threshold" type="number" class="text_pole" min="0" step="1" value="${s.thresholdHours}">
                         </div>
@@ -245,10 +276,27 @@ function initSettings() {
     const settingsEl = tempDiv.firstElementChild;
     container.appendChild(settingsEl);
 
+    const presetSelect = settingsEl.querySelector('#chatrecap_preset');
     const thresholdInput = settingsEl.querySelector('#chatrecap_threshold');
     const tokensInput = settingsEl.querySelector('#chatrecap_max_tokens');
     const showTimeCheck = settingsEl.querySelector('#chatrecap_show_time');
     const templateArea = settingsEl.querySelector('#chatrecap_template');
+
+    if (presetSelect) {
+        const presets = getPresetNames();
+        for (const p of presets) {
+            const opt = document.createElement('option');
+            opt.value = p.value;
+            opt.textContent = p.text;
+            if (s.preset === p.text || s.preset === p.value) opt.selected = true;
+            presetSelect.appendChild(opt);
+        }
+        presetSelect.addEventListener('change', () => {
+            const selected = presetSelect.options[presetSelect.selectedIndex];
+            s.preset = selected.textContent.trim() || '';
+            saveSettings();
+        });
+    }
 
     if (thresholdInput) {
         thresholdInput.addEventListener('change', () => {
