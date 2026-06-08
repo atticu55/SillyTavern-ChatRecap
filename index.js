@@ -300,7 +300,7 @@ function initSettings() {
             profileSelect.appendChild(opt);
         }
         profileSelect.disabled = true;
-        profileSelect.title = 'Connection profile switching is not yet implemented';
+        profileSelect.title = 'Not implemented in v1.2.0';
     }
 
     if (thresholdInput) {
@@ -348,7 +348,7 @@ function initSettings() {
 }
 
 export async function init() {
-    log('Initializing v1.0.8');
+    log('Initializing v1.2.1');
     await initModules();
     initSettings();
     const { eventSource, event_types } = scriptModule;
