@@ -1,0 +1,93 @@
+/* ChatRecap Extension Styles */
+
+/* Popup Content */
+.chat-recap-container {
+    padding: 16px 20px;
+    max-width: 100%;
+    background: var(--SmartThemeBlurTintColor, #1a1a1a);
+}
+
+.recap-title {
+    font-size: 1.15em;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--SmartThemeBodyColor, #fff);
+}
+
+.recap-time {
+    font-size: 0.85em;
+    color: var(--SmartThemeQuoteColor, #aaa);
+    margin-bottom: 16px;
+}
+
+.recap-body {
+    line-height: 1.6;
+    white-space: pre-wrap;
+    color: var(--SmartThemeBodyColor, #eee);
+    max-height: 50vh;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+
+.recap-close-button {
+    display: block;
+    margin: 0 auto;
+    padding: 8px 24px;
+    background: transparent;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    color: var(--SmartThemeBodyColor, #fff);
+    font-size: 0.95em;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.recap-close-button:hover {
+    background: var(--SmartThemeBorderColor, #333);
+    border-color: var(--SmartThemeBodyColor, #666);
+}
+
+/* Settings Panel */
+.chat-recap-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 10px;
+}
+
+.chat-recap-setting-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.chat-recap-setting-row label {
+    font-weight: bold;
+    color: var(--SmartThemeBodyColor, #fff);
+}
+
+.chat-recap-setting-row input[type="number"] {
+    width: 100px;
+    padding: 4px 8px;
+    background: var(--SmartThemeBlurTintColor, #222);
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    color: var(--SmartThemeBodyColor, #fff);
+    border-radius: 4px;
+}
+
+.chat-recap-setting-row input[type="checkbox"] {
+    width: auto;
+    margin-top: 4px;
+}
+
+.chat-recap-setting-row textarea {
+    width: 100%;
+    padding: 8px;
+    background: var(--SmartThemeBlurTintColor, #222);
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    color: var(--SmartThemeBodyColor, #fff);
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9em;
+    resize: vertical;
+}
