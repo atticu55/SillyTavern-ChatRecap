@@ -63,13 +63,6 @@ function escapeHtml(text) {
     return d.innerHTML;
 }
 
-function getConnectionProfiles() {
-    const { extension_settings } = extensionsModule;
-    const cm = extension_settings.connectionManager;
-    if (!cm?.profiles) return [];
-    return cm.profiles.map(p => p.name).filter(Boolean).sort();
-}
-
 function getLastMessageTime(ctx) {
     if (!ctx.chat?.length) return null;
     for (let i = ctx.chat.length - 1; i >= 0; i--) {
@@ -239,12 +232,6 @@ function initSettings() {
                             <button id="chatrecap_test" class="menu_button">Test Recap Now</button>
                         </div>
                         <div class="chat-recap-setting-row">
-                            <label for="chatrecap_profile">Connection Profile</label>
-                            <select id="chatrecap_profile" class="text_pole wide100p">
-                                <option value="">Default (current settings)</option>
-                            </select>
-                        </div>
-                        <div class="chat-recap-setting-row">
                             <label for="chatrecap_threshold">Time Threshold (hours)</label>
                             <input id="chatrecap_threshold" type="number" class="text_pole" min="0" step="1" value="${s.thresholdHours}">
                         </div>
@@ -277,7 +264,6 @@ function initSettings() {
     container.appendChild(settingsEl);
 
     const testBtn = settingsEl.querySelector('#chatrecap_test');
-    const profileSelect = settingsEl.querySelector('#chatrecap_profile');
     const thresholdInput = settingsEl.querySelector('#chatrecap_threshold');
     const tokensInput = settingsEl.querySelector('#chatrecap_max_tokens');
     const showTimeCheck = settingsEl.querySelector('#chatrecap_show_time');
@@ -288,19 +274,6 @@ function initSettings() {
             log('Manual test triggered');
             checkAndShowRecap(true);
         });
-    }
-
-    if (profileSelect) {
-        const profiles = getConnectionProfiles();
-        for (const name of profiles) {
-            if (!name) continue;
-            const opt = document.createElement('option');
-            opt.value = name;
-            opt.textContent = name;
-            profileSelect.appendChild(opt);
-        }
-        profileSelect.disabled = true;
-        profileSelect.title = 'Not implemented in v1.2.0';
     }
 
     if (thresholdInput) {
@@ -339,10 +312,7 @@ function initSettings() {
         log('=== DEBUG ===');
         log('Settings:', JSON.stringify(s));
         log('Chat length:', getContext()?.chat?.length || 0);
-        log('Metadata:', JSON.stringify(getContext()?.chatMetadata?.[MODULE_NAME] || {}));
-        log('Profiles found:', getConnectionProfiles().join(', ') || 'none');
-        log('Note: connection profile switching not yet implemented');
-        log('Profiles select exists:', !!document.getElementById('connection_profiles'));
+        log('Last message time:', getLastMessageTime(getContext()));
         log('=============');
     };
 }
