@@ -2,7 +2,7 @@ const LOG_PREFIX = '[ChatRecap]';
 const MODULE_NAME = 'ChatRecap';
 const CHAT_CHANGE_DELAY_MS = 100;
 const INITIAL_CHECK_DELAY_MS = 500;
-const MAX_HISTORY_MESSAGES = 100;
+const MAX_HISTORY_MESSAGES = 2000;
 
 const defaultSettings = Object.freeze({
     thresholdHours: 24,
@@ -100,13 +100,13 @@ async function generateRecap(history) {
     try {
         const { generateQuietPrompt, generateRaw } = scriptModule;
         let result = null;
-        if (typeof generateQuietPrompt === 'function') {
-            log('Calling generateQuietPrompt with', prompt.length, 'chars');
-            result = await generateQuietPrompt({ quietPrompt: prompt, quietToLoud: false, skipWIAN: true, responseLength: s.maxTokens, removeReasoning: true });
-            log('generateQuietPrompt raw result type:', typeof result, '| value:', result === null ? 'null' : result === undefined ? 'undefined' : result.length + ' chars');
+        if (typeof generateRaw === 'function') {
+            log('Calling generateRaw with', prompt.length, 'chars');
+            result = await generateRaw({ prompt, systemPrompt: 'Summarize this roleplay conversation concisely, focusing on key events, character development, and emotional moments. Write 3-5 paragraphs in an engaging narrative style.', responseLength: s.maxTokens, quietToLoud: false });
+            log('generateRaw raw result type:', typeof result, '| value:', result === null ? 'null' : result === undefined ? 'undefined' : result.length + ' chars');
             result = result?.trim() || null;
             log('After trim:', result === null ? 'null' : result.length + ' chars');
-        } else if (typeof generateRaw === 'function') {
+        } else if (typeof generateQuietPrompt === 'function') {
             log('Falling back to generateRaw');
             result = await generateRaw({ prompt, systemPrompt: 'You are a helpful assistant that summarizes roleplay conversations concisely.', responseLength: s.maxTokens });
             log('generateRaw raw result type:', typeof result, '| value:', result === null ? 'null' : result === undefined ? 'undefined' : result.length + ' chars');
