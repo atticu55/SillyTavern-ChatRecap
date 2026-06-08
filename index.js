@@ -1,20 +1,5 @@
-import {
-    eventSource,
-    event_types,
-    generateQuietPrompt,
-    generateRaw,
-    saveSettingsDebounced,
-    getCurrentChatId,
-} from '../../../script.js';
-import {
-    getContext,
-    extension_settings,
-} from '../../extensions.js';
-import { POPUP_TYPE, Popup } from '../../popup.js';
-
+const LOG_PREFIX = '[ChatRecap]';
 const MODULE_NAME = 'ChatRecap';
-const LOG_PREFIX = `[${MODULE_NAME}]`;
-
 const CHAT_CHANGE_DELAY_MS = 100;
 const INITIAL_CHECK_DELAY_MS = 500;
 const MAX_HISTORY_MESSAGES = 2000;
@@ -28,13 +13,33 @@ const defaultSettings = Object.freeze({
 
 let isGenerating = false;
 let currentPopup = null;
-let cachedSettings = null;
+let scriptModule = null;
+let extensionsModule = null;
+let popupModule = null;
 
 function log(...args) {
     console.log(LOG_PREFIX, ...args);
 }
 
+async function loadModule(paths) {
+    for (const path of paths) {
+        try {
+            return await import(path);
+        } catch (e) {
+            continue;
+        }
+    }
+    throw new Error(`Failed to load module from any path: ${paths.join(', ')}`);
+}
+
+async function initModules() {
+    scriptModule = await loadModule(['../../../script.js', '../../../../script.js']);
+    extensionsModule = await loadModule(['../../extensions.js', '../../../extensions.js']);
+    popupModule = await loadModule(['../../popup.js', '../../../popup.js']);
+}
+
 function getSettings() {
+    const { extension_settings } = extensionsModule;
     if (!extension_settings[MODULE_NAME]) {
         extension_settings[MODULE_NAME] = structuredClone(defaultSettings);
     }
@@ -44,11 +49,11 @@ function getSettings() {
             s[key] = structuredClone(defaultSettings[key]);
         }
     }
-    cachedSettings = s;
     return s;
 }
 
 function saveSettings() {
+    const { saveSettingsDebounced } = scriptModule;
     saveSettingsDebounced();
 }
 
@@ -67,6 +72,7 @@ function formatTimeAway(lastActive) {
 }
 
 function buildChatHistory() {
+    const { getContext } = extensionsModule;
     const ctx = getContext();
     if (!ctx?.chat?.length) return '';
     const msgs = ctx.chat.filter(m => !m.is_system);
@@ -79,6 +85,7 @@ async function generateRecap(history) {
     const prompt = s.promptTemplate.replace('{{messages}}', history);
     isGenerating = true;
     try {
+        const { generateQuietPrompt, generateRaw } = scriptModule;
         if (typeof generateQuietPrompt === 'function') {
             const r = await generateQuietPrompt({ quietPrompt: prompt, quietToLoud: false, skipWIAN: true, responseLength: s.maxTokens, removeReasoning: true });
             return r?.trim() || null;
@@ -102,6 +109,7 @@ async function showRecap(summary, timeAwayText) {
         try { currentPopup.close(); } catch (_e) {}
         currentPopup = null;
     }
+    const { POPUP_TYPE, Popup } = popupModule;
     const html = `
         <div class="chat-recap-container">
             <div class="recap-title">Where you left off</div>
@@ -126,6 +134,8 @@ async function showRecap(summary, timeAwayText) {
 async function checkAndShowRecap() {
     try {
         if (isGenerating) { log('Already generating, skipping'); return; }
+        const { getContext } = extensionsModule;
+        const { getCurrentChatId } = scriptModule;
         const ctx = getContext();
         if (!ctx?.chat?.length) { log('Chat not loaded, skipping'); return; }
         const chatKey = getCurrentChatId?.() || null;
@@ -272,9 +282,13 @@ function initSettings() {
 
 export async function init() {
     log('Initializing v1.0.0');
-    await initSettings();
+    await initModules();
+    initSettings();
+    const { eventSource, event_types } = scriptModule;
     eventSource.on(event_types.CHAT_CHANGED, onChatChanged);
     log('Event listener attached: CHAT_CHANGED');
+    const { getContext } = extensionsModule;
+    const { getCurrentChatId } = scriptModule;
     const ctx = getContext();
     if (ctx?.chat?.length && getCurrentChatId?.()) {
         log('Chat already loaded, triggering initial check');
