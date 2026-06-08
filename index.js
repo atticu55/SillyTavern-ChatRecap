@@ -101,11 +101,17 @@ async function generateRecap(history) {
         const { generateQuietPrompt, generateRaw } = scriptModule;
         let result = null;
         if (typeof generateQuietPrompt === 'function') {
+            log('Calling generateQuietPrompt with', prompt.length, 'chars');
             result = await generateQuietPrompt({ quietPrompt: prompt, quietToLoud: false, skipWIAN: true, responseLength: s.maxTokens, removeReasoning: true });
+            log('generateQuietPrompt raw result type:', typeof result, '| value:', result === null ? 'null' : result === undefined ? 'undefined' : result.length + ' chars');
             result = result?.trim() || null;
+            log('After trim:', result === null ? 'null' : result.length + ' chars');
         } else if (typeof generateRaw === 'function') {
+            log('Falling back to generateRaw');
             result = await generateRaw({ prompt, systemPrompt: 'You are a helpful assistant that summarizes roleplay conversations concisely.', responseLength: s.maxTokens });
+            log('generateRaw raw result type:', typeof result, '| value:', result === null ? 'null' : result === undefined ? 'undefined' : result.length + ' chars');
             result = result?.trim() || null;
+            log('After trim:', result === null ? 'null' : result.length + ' chars');
         } else {
             log('No generation API available');
         }
@@ -318,7 +324,7 @@ function initSettings() {
 }
 
 export async function init() {
-    log('Initializing v1.2.1');
+    log('Initializing v1.2.2');
     await initModules();
     initSettings();
     const { eventSource, event_types } = scriptModule;
