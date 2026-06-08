@@ -169,7 +169,7 @@ async function showRecap(summary, timeAwayText) {
     popup.show().then(() => { currentPopup = null; }).catch(e => { log('Popup error:', e); currentPopup = null; });
 }
 
-async function checkAndShowRecap() {
+async function checkAndShowRecap(force = false) {
     try {
         if (isGenerating) { log('Already generating, skipping'); return; }
         const { getContext } = extensionsModule;
@@ -184,7 +184,7 @@ async function checkAndShowRecap() {
         const lastActive = recapData.lastActive || 0;
         const now = Date.now();
 
-        if (!lastActive) {
+        if (!lastActive && !force) {
             log('First visit, setting baseline');
             ctx.chat_metadata[MODULE_NAME] = { ...recapData, lastActive: now };
             ctx.saveMetadataDebounced?.();
@@ -192,16 +192,17 @@ async function checkAndShowRecap() {
         }
 
         const s = getSettings();
-        const hoursAway = (now - lastActive) / (1000 * 60 * 60);
-        if (hoursAway < s.thresholdHours) {
+        const hoursAway = lastActive ? (now - lastActive) / (1000 * 60 * 60) : Infinity;
+        if (!force && hoursAway < s.thresholdHours) {
             log(`${hoursAway.toFixed(1)}h < ${s.thresholdHours}h threshold, skipping`);
             ctx.chat_metadata[MODULE_NAME] = { ...recapData, lastActive: now };
             ctx.saveMetadataDebounced?.();
             return;
         }
 
-        log(`${hoursAway.toFixed(1)}h >= ${s.thresholdHours}h, generating recap`);
+        log(force ? 'Forced recap generation' : `${hoursAway.toFixed(1)}h >= ${s.thresholdHours}h, generating recap`);
         const history = buildChatHistory();
+        log('History length:', history.length, 'chars');
         if (!history.trim()) {
             log('No history available');
             ctx.chat_metadata[MODULE_NAME] = { ...recapData, lastActive: now };
@@ -211,7 +212,12 @@ async function checkAndShowRecap() {
 
         const summary = await generateRecap(history);
         if (getCurrentChatId?.() !== chatKey) { log('Chat changed, discarding'); return; }
-        if (summary) await showRecap(summary, s.showTimeAway ? formatTimeAway(lastActive) : '');
+        if (summary) {
+            log('Got summary, showing popup');
+            await showRecap(summary, s.showTimeAway ? formatTimeAway(lastActive) : '');
+        } else {
+            log('No summary returned from LLM');
+        }
 
         const newData = ctx.chat_metadata[MODULE_NAME] || {};
         ctx.chat_metadata[MODULE_NAME] = { ...newData, lastActive: now };
@@ -251,6 +257,9 @@ function initSettings() {
                 </div>
                 <div class="inline-drawer-content">
                     <div class="chat-recap-settings">
+                        <div class="chat-recap-setting-row" style="margin-bottom:10px;">
+                            <button id="chatrecap_test" class="menu_button">Test Recap Now</button>
+                        </div>
                         <div class="chat-recap-setting-row">
                             <label for="chatrecap_profile">Connection Profile</label>
                             <select id="chatrecap_profile" class="text_pole wide100p">
@@ -289,11 +298,19 @@ function initSettings() {
     const settingsEl = tempDiv.firstElementChild;
     container.appendChild(settingsEl);
 
+    const testBtn = settingsEl.querySelector('#chatrecap_test');
     const profileSelect = settingsEl.querySelector('#chatrecap_profile');
     const thresholdInput = settingsEl.querySelector('#chatrecap_threshold');
     const tokensInput = settingsEl.querySelector('#chatrecap_max_tokens');
     const showTimeCheck = settingsEl.querySelector('#chatrecap_show_time');
     const templateArea = settingsEl.querySelector('#chatrecap_template');
+
+    if (testBtn) {
+        testBtn.addEventListener('click', () => {
+            log('Manual test triggered');
+            checkAndShowRecap(true);
+        });
+    }
 
     if (profileSelect) {
         const profiles = getConnectionProfiles();
@@ -340,10 +357,23 @@ function initSettings() {
     }
 
     log('Settings UI initialized');
+
+    // Expose debug helper
+    window.chatRecapDebug = async function() {
+        const { getContext } = extensionsModule;
+        const s = getSettings();
+        log('=== DEBUG ===');
+        log('Settings:', JSON.stringify(s));
+        log('Chat length:', getContext()?.chat?.length || 0);
+        log('Metadata:', JSON.stringify(getContext()?.chat_metadata?.[MODULE_NAME] || {}));
+        log('Profiles found:', getConnectionProfiles().join(', ') || 'none');
+        log('Profiles select exists:', !!document.getElementById('connection_profiles'));
+        log('=============');
+    };
 }
 
 export async function init() {
-    log('Initializing v1.0.4');
+    log('Initializing v1.0.5');
     await initModules();
     initSettings();
     const { eventSource, event_types } = scriptModule;
