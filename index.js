@@ -70,9 +70,22 @@ function getConnectionProfiles() {
     return cm.profiles.map(p => p.name).filter(Boolean).sort();
 }
 
-function formatTimeAway(lastActive) {
-    if (!lastActive || typeof lastActive !== 'number') return '';
-    const hours = (Date.now() - lastActive) / (1000 * 60 * 60);
+function getLastMessageTime(ctx) {
+    if (!ctx.chat?.length) return null;
+    for (let i = ctx.chat.length - 1; i >= 0; i--) {
+        const msg = ctx.chat[i];
+        if (msg.is_system) continue;
+        if (msg.send_date) {
+            const ts = new Date(msg.send_date).getTime();
+            if (!isNaN(ts)) return ts;
+        }
+    }
+    return null;
+}
+
+function formatTimeAway(timestamp) {
+    if (!timestamp || typeof timestamp !== 'number') return '';
+    const hours = (Date.now() - timestamp) / (1000 * 60 * 60);
     if (hours < 1) return `${Math.round(hours * 60)}m ago`;
     if (hours < 24) return `${Math.round(hours)}h ago`;
     return `${Math.round(hours / 24)}d ago`;
@@ -149,27 +162,28 @@ async function checkAndShowRecap(force = false) {
         const chatKey = getCurrentChatId?.() || null;
         if (!chatKey) { log('No chat key, skipping'); return; }
 
-        if (!ctx.chatMetadata) ctx.chatMetadata = {};
-        const recapData = ctx.chatMetadata[MODULE_NAME] || {};
-        const lastActive = recapData.lastActive || 0;
+        const lastMessageTime = getLastMessageTime(ctx);
+
         const now = Date.now();
 
         const s = getSettings();
-        const hoursAway = lastActive ? (now - lastActive) / (1000 * 60 * 60) : Infinity;
 
-        if (!lastActive && !force) {
-            log('First visit, setting baseline');
-            ctx.chatMetadata[MODULE_NAME] = { ...recapData, lastActive: now };
-            extensionsModule.saveMetadataDebounced?.();
+        // If no messages yet, skip
+        if (!lastMessageTime && !force) {
+            log('No messages yet, skipping');
             return;
         }
 
-        if (!force && hoursAway < s.thresholdHours) {
-            log(`${hoursAway.toFixed(1)}h < ${s.thresholdHours}h threshold, skipping`);
+        // Calculate time since last message
+        const hoursSinceMessage = lastMessageTime ? (now - lastMessageTime) / (1000 * 60 * 60) : Infinity;
+
+        // Skip if not enough time has passed since last message
+        if (!force && hoursSinceMessage < s.thresholdHours) {
+            log(`${hoursSinceMessage.toFixed(1)}h since last message < ${s.thresholdHours}h threshold, skipping`);
             return;
         }
 
-        log(force ? 'Forced recap generation' : `${hoursAway.toFixed(1)}h >= ${s.thresholdHours}h, generating recap`);
+        log(force ? 'Forced recap generation' : `${hoursSinceMessage.toFixed(1)}h since last message, generating recap`);
         const history = buildChatHistory();
         log('History length:', history.length, 'chars');
         if (!history.trim()) {
@@ -181,13 +195,11 @@ async function checkAndShowRecap(force = false) {
         if (getCurrentChatId?.() !== chatKey) { log('Chat changed, discarding'); return; }
         if (summary) {
             log('Got summary, showing popup');
-            await showRecap(summary, s.showTimeAway ? formatTimeAway(lastActive) : '');
+            await showRecap(summary, s.showTimeAway ? formatTimeAway(lastMessageTime) : '');
         } else {
             log('No summary returned from LLM');
         }
 
-        ctx.chatMetadata[MODULE_NAME] = { ...ctx.chatMetadata[MODULE_NAME], lastActive: now };
-        extensionsModule.saveMetadataDebounced?.();
     } catch (e) {
         log('Error in checkAndShowRecap:', e);
         isGenerating = false;
