@@ -120,8 +120,6 @@ async function generateRecap(history) {
     const prompt = s.promptTemplate.replace('{{messages}}', history);
     isGenerating = true;
     try {
-        if (s.connectionProfile) await applyConnectionProfile(s.connectionProfile);
-
         const { generateQuietPrompt, generateRaw } = scriptModule;
         let result = null;
         if (typeof generateQuietPrompt === 'function') {
@@ -179,14 +177,14 @@ async function checkAndShowRecap(force = false) {
         const chatKey = getCurrentChatId?.() || null;
         if (!chatKey) { log('No chat key, skipping'); return; }
 
-        if (!ctx.chat_metadata) ctx.chat_metadata = {};
-        const recapData = ctx.chat_metadata[MODULE_NAME] || {};
+        if (!ctx.chatMetadata) ctx.chatMetadata = {};
+        const recapData = ctx.chatMetadata[MODULE_NAME] || {};
         const lastActive = recapData.lastActive || 0;
         const now = Date.now();
 
         if (!lastActive && !force) {
             log('First visit, setting baseline');
-            ctx.chat_metadata[MODULE_NAME] = { ...recapData, lastActive: now };
+            ctx.chatMetadata[MODULE_NAME] = { ...recapData, lastActive: now };
             ctx.saveMetadataDebounced?.();
             return;
         }
@@ -195,7 +193,7 @@ async function checkAndShowRecap(force = false) {
         const hoursAway = lastActive ? (now - lastActive) / (1000 * 60 * 60) : Infinity;
         if (!force && hoursAway < s.thresholdHours) {
             log(`${hoursAway.toFixed(1)}h < ${s.thresholdHours}h threshold, skipping`);
-            ctx.chat_metadata[MODULE_NAME] = { ...recapData, lastActive: now };
+            ctx.chatMetadata[MODULE_NAME] = { ...recapData, lastActive: now };
             ctx.saveMetadataDebounced?.();
             return;
         }
@@ -205,7 +203,7 @@ async function checkAndShowRecap(force = false) {
         log('History length:', history.length, 'chars');
         if (!history.trim()) {
             log('No history available');
-            ctx.chat_metadata[MODULE_NAME] = { ...recapData, lastActive: now };
+            ctx.chatMetadata[MODULE_NAME] = { ...recapData, lastActive: now };
             ctx.saveMetadataDebounced?.();
             return;
         }
@@ -219,8 +217,8 @@ async function checkAndShowRecap(force = false) {
             log('No summary returned from LLM');
         }
 
-        const newData = ctx.chat_metadata[MODULE_NAME] || {};
-        ctx.chat_metadata[MODULE_NAME] = { ...newData, lastActive: now };
+        const newData = ctx.chatMetadata[MODULE_NAME] || {};
+        ctx.chatMetadata[MODULE_NAME] = { ...newData, lastActive: now };
         ctx.saveMetadataDebounced?.();
     } catch (e) {
         log('Error in checkAndShowRecap:', e);
@@ -365,7 +363,7 @@ function initSettings() {
         log('=== DEBUG ===');
         log('Settings:', JSON.stringify(s));
         log('Chat length:', getContext()?.chat?.length || 0);
-        log('Metadata:', JSON.stringify(getContext()?.chat_metadata?.[MODULE_NAME] || {}));
+        log('Metadata:', JSON.stringify(getContext()?.chatMetadata?.[MODULE_NAME] || {}));
         log('Profiles found:', getConnectionProfiles().join(', ') || 'none');
         log('Profiles select exists:', !!document.getElementById('connection_profiles'));
         log('=============');
@@ -373,7 +371,7 @@ function initSettings() {
 }
 
 export async function init() {
-    log('Initializing v1.0.5');
+    log('Initializing v1.0.6');
     await initModules();
     initSettings();
     const { eventSource, event_types } = scriptModule;
