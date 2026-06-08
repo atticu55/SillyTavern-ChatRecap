@@ -9,7 +9,6 @@ const defaultSettings = Object.freeze({
     maxTokens: 256,
     promptTemplate: 'Summarize what has happened in this conversation so far. Keep it brief but include key events, decisions, and emotional beats.\n\n{{messages}}',
     showTimeAway: true,
-    connectionProfile: '',
 });
 
 let isGenerating = false;
@@ -69,33 +68,6 @@ function getConnectionProfiles() {
     const cm = extension_settings.connectionManager;
     if (!cm?.profiles) return [];
     return cm.profiles.map(p => p.name).filter(Boolean).sort();
-}
-
-async function applyConnectionProfile(profileName) {
-    if (!profileName) return;
-    const { extension_settings } = extensionsModule;
-    const cm = extension_settings.connectionManager;
-    if (!cm?.profiles) return;
-    const profile = cm.profiles.find(p => p.name === profileName);
-    if (!profile) {
-        log('Connection profile not found:', profileName);
-        return;
-    }
-
-    const profilesSelect = document.getElementById('connection_profiles');
-    if (!profilesSelect) {
-        log('Connection profiles dropdown not found in DOM');
-        return;
-    }
-
-    if (profilesSelect.value !== profile.id) {
-        profilesSelect.value = profile.id;
-        profilesSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        await new Promise(r => setTimeout(r, 1000));
-        log('Applied connection profile:', profileName);
-    } else {
-        log('Connection profile already active:', profileName);
-    }
 }
 
 function formatTimeAway(lastActive) {
@@ -317,14 +289,10 @@ function initSettings() {
             const opt = document.createElement('option');
             opt.value = name;
             opt.textContent = name;
-            if (s.connectionProfile === name) opt.selected = true;
             profileSelect.appendChild(opt);
         }
-        profileSelect.addEventListener('change', () => {
-            const selected = profileSelect.options[profileSelect.selectedIndex];
-            s.connectionProfile = selected ? selected.textContent.trim() : '';
-            saveSettings();
-        });
+        profileSelect.disabled = true;
+        profileSelect.title = 'Connection profile switching is not yet implemented';
     }
 
     if (thresholdInput) {
@@ -365,13 +333,14 @@ function initSettings() {
         log('Chat length:', getContext()?.chat?.length || 0);
         log('Metadata:', JSON.stringify(getContext()?.chatMetadata?.[MODULE_NAME] || {}));
         log('Profiles found:', getConnectionProfiles().join(', ') || 'none');
+        log('Note: connection profile switching not yet implemented');
         log('Profiles select exists:', !!document.getElementById('connection_profiles'));
         log('=============');
     };
 }
 
 export async function init() {
-    log('Initializing v1.0.6');
+    log('Initializing v1.0.8');
     await initModules();
     initSettings();
     const { eventSource, event_types } = scriptModule;
