@@ -142,7 +142,7 @@ async function generateRecap(history) {
 
 async function showRecap(summary, timeAwayText) {
     if (currentPopup) {
-        try { currentPopup.close(); } catch (_e) {}
+        try { currentPopup.completeCancelled(); } catch (_e) {}
         currentPopup = null;
     }
     const { POPUP_TYPE, Popup } = popupModule;
@@ -229,7 +229,7 @@ async function checkAndShowRecap(force = false) {
 function onChatChanged() {
     try {
         if (isGenerating) log('Generation aborted - chat changed');
-        if (currentPopup) { try { currentPopup.close(); } catch (_e) {} currentPopup = null; }
+        if (currentPopup) { try { currentPopup.completeCancelled(); } catch (_e) {} currentPopup = null; }
         isGenerating = false;
         setTimeout(() => checkAndShowRecap(), CHAT_CHANGE_DELAY_MS);
     } catch (e) {
