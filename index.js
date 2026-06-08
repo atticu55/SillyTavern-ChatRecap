@@ -17,6 +17,7 @@ let currentPopup = null;
 let scriptModule = null;
 let extensionsModule = null;
 let popupModule = null;
+let presetManagerModule = null;
 
 function log(...args) {
     console.log(LOG_PREFIX, ...args);
@@ -37,6 +38,7 @@ async function initModules() {
     scriptModule = await loadModule(['../../../script.js', '../../../../script.js']);
     extensionsModule = await loadModule(['../../extensions.js', '../../../extensions.js']);
     popupModule = await loadModule(['../../popup.js', '../../../popup.js']);
+    presetManagerModule = await loadModule(['../../preset-manager.js', '../../../preset-manager.js']);
 }
 
 function getSettings() {
@@ -64,24 +66,45 @@ function escapeHtml(text) {
     return d.innerHTML;
 }
 
+function getPresetManager() {
+    if (!presetManagerModule) return null;
+    const { main_api } = scriptModule;
+    return presetManagerModule.getPresetManager?.(main_api);
+}
+
 function getPresetNames() {
-    const select = document.querySelector('#preset_select');
-    if (!select) return [];
-    return Array.from(select.querySelectorAll('optgroup option, option')).map(o => ({
-        value: o.value,
-        text: o.textContent.trim(),
-    })).filter(o => o.value && o.value !== 'null');
+    const manager = getPresetManager();
+    if (!manager) return [];
+    try {
+        return manager.getAllPresets();
+    } catch (e) {
+        log('Failed to get presets:', e);
+        return [];
+    }
+}
+
+function getCurrentPresetName() {
+    const manager = getPresetManager();
+    if (!manager) return '';
+    try {
+        return manager.getSelectedPresetName?.() || '';
+    } catch (e) {
+        return '';
+    }
 }
 
 async function applyPreset(presetName) {
     if (!presetName) return;
-    const select = document.querySelector('#preset_select');
-    if (!select) return;
-    const opt = Array.from(select.options).find(o => o.textContent.trim() === presetName || o.value === presetName);
-    if (opt && select.value !== opt.value) {
-        select.value = opt.value;
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-        await new Promise(r => setTimeout(r, 300));
+    const manager = getPresetManager();
+    if (!manager) return;
+    try {
+        const value = manager.findPreset(presetName);
+        if (value !== undefined && value !== null) {
+            manager.selectPreset(value);
+            await new Promise(r => setTimeout(r, 500));
+        }
+    } catch (e) {
+        log('Failed to apply preset:', e);
     }
 }
 
@@ -106,6 +129,7 @@ async function generateRecap(history) {
     const s = getSettings();
     const prompt = s.promptTemplate.replace('{{messages}}', history);
     isGenerating = true;
+    const previousPreset = getCurrentPresetName();
     try {
         if (s.preset) await applyPreset(s.preset);
 
@@ -125,6 +149,9 @@ async function generateRecap(history) {
         log('Generation failed:', e);
         return null;
     } finally {
+        if (previousPreset && previousPreset !== getCurrentPresetName()) {
+            await applyPreset(previousPreset);
+        }
         isGenerating = false;
     }
 }
@@ -284,16 +311,17 @@ function initSettings() {
 
     if (presetSelect) {
         const presets = getPresetNames();
-        for (const p of presets) {
+        for (const name of presets) {
+            if (!name) continue;
             const opt = document.createElement('option');
-            opt.value = p.value;
-            opt.textContent = p.text;
-            if (s.preset === p.text || s.preset === p.value) opt.selected = true;
+            opt.value = name;
+            opt.textContent = name;
+            if (s.preset === name) opt.selected = true;
             presetSelect.appendChild(opt);
         }
         presetSelect.addEventListener('change', () => {
             const selected = presetSelect.options[presetSelect.selectedIndex];
-            s.preset = selected.textContent.trim() || '';
+            s.preset = selected ? selected.textContent.trim() : '';
             saveSettings();
         });
     }
@@ -329,7 +357,7 @@ function initSettings() {
 }
 
 export async function init() {
-    log('Initializing v1.0.0');
+    log('Initializing v1.0.3');
     await initModules();
     initSettings();
     const { eventSource, event_types } = scriptModule;
