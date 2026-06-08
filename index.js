@@ -154,19 +154,18 @@ async function checkAndShowRecap(force = false) {
         const lastActive = recapData.lastActive || 0;
         const now = Date.now();
 
+        const s = getSettings();
+        const hoursAway = lastActive ? (now - lastActive) / (1000 * 60 * 60) : Infinity;
+
         if (!lastActive && !force) {
             log('First visit, setting baseline');
             ctx.chatMetadata[MODULE_NAME] = { ...recapData, lastActive: now };
-            ctx.saveMetadataDebounced?.();
+            extensionsModule.saveMetadataDebounced?.();
             return;
         }
 
-        const s = getSettings();
-        const hoursAway = lastActive ? (now - lastActive) / (1000 * 60 * 60) : Infinity;
         if (!force && hoursAway < s.thresholdHours) {
             log(`${hoursAway.toFixed(1)}h < ${s.thresholdHours}h threshold, skipping`);
-            ctx.chatMetadata[MODULE_NAME] = { ...recapData, lastActive: now };
-            ctx.saveMetadataDebounced?.();
             return;
         }
 
@@ -175,8 +174,6 @@ async function checkAndShowRecap(force = false) {
         log('History length:', history.length, 'chars');
         if (!history.trim()) {
             log('No history available');
-            ctx.chatMetadata[MODULE_NAME] = { ...recapData, lastActive: now };
-            ctx.saveMetadataDebounced?.();
             return;
         }
 
@@ -189,9 +186,8 @@ async function checkAndShowRecap(force = false) {
             log('No summary returned from LLM');
         }
 
-        const newData = ctx.chatMetadata[MODULE_NAME] || {};
-        ctx.chatMetadata[MODULE_NAME] = { ...newData, lastActive: now };
-        ctx.saveMetadataDebounced?.();
+        ctx.chatMetadata[MODULE_NAME] = { ...ctx.chatMetadata[MODULE_NAME], lastActive: now };
+        extensionsModule.saveMetadataDebounced?.();
     } catch (e) {
         log('Error in checkAndShowRecap:', e);
         isGenerating = false;
