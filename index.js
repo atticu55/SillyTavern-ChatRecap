@@ -9,7 +9,7 @@ const defaultSettings = Object.freeze({
     maxTokens: 256,
     promptTemplate: 'Summarize what has happened in this conversation so far. Keep it brief but include key events, decisions, and emotional beats.\n\n{{messages}}',
     showTimeAway: true,
-    preset: '',
+    connectionProfile: '',
 });
 
 let isGenerating = false;
@@ -17,7 +17,6 @@ let currentPopup = null;
 let scriptModule = null;
 let extensionsModule = null;
 let popupModule = null;
-let presetManagerModule = null;
 
 function log(...args) {
     console.log(LOG_PREFIX, ...args);
@@ -38,7 +37,6 @@ async function initModules() {
     scriptModule = await loadModule(['../../../script.js', '../../../../script.js']);
     extensionsModule = await loadModule(['../../extensions.js', '../../../extensions.js']);
     popupModule = await loadModule(['../../popup.js', '../../../popup.js']);
-    presetManagerModule = await loadModule(['../../preset-manager.js', '../../../preset-manager.js']);
 }
 
 function getSettings() {
@@ -66,45 +64,37 @@ function escapeHtml(text) {
     return d.innerHTML;
 }
 
-function getPresetManager() {
-    if (!presetManagerModule) return null;
-    const { main_api } = scriptModule;
-    return presetManagerModule.getPresetManager?.(main_api);
+function getConnectionProfiles() {
+    const { extension_settings } = extensionsModule;
+    const cm = extension_settings.connectionManager;
+    if (!cm?.profiles) return [];
+    return cm.profiles.map(p => p.name).filter(Boolean).sort();
 }
 
-function getPresetNames() {
-    const manager = getPresetManager();
-    if (!manager) return [];
-    try {
-        return manager.getAllPresets();
-    } catch (e) {
-        log('Failed to get presets:', e);
-        return [];
+async function applyConnectionProfile(profileName) {
+    if (!profileName) return;
+    const { extension_settings } = extensionsModule;
+    const cm = extension_settings.connectionManager;
+    if (!cm?.profiles) return;
+    const profile = cm.profiles.find(p => p.name === profileName);
+    if (!profile) {
+        log('Connection profile not found:', profileName);
+        return;
     }
-}
 
-function getCurrentPresetName() {
-    const manager = getPresetManager();
-    if (!manager) return '';
-    try {
-        return manager.getSelectedPresetName?.() || '';
-    } catch (e) {
-        return '';
+    const profilesSelect = document.getElementById('connection_profiles');
+    if (!profilesSelect) {
+        log('Connection profiles dropdown not found in DOM');
+        return;
     }
-}
 
-async function applyPreset(presetName) {
-    if (!presetName) return;
-    const manager = getPresetManager();
-    if (!manager) return;
-    try {
-        const value = manager.findPreset(presetName);
-        if (value !== undefined && value !== null) {
-            manager.selectPreset(value);
-            await new Promise(r => setTimeout(r, 500));
-        }
-    } catch (e) {
-        log('Failed to apply preset:', e);
+    if (profilesSelect.value !== profile.id) {
+        profilesSelect.value = profile.id;
+        profilesSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        await new Promise(r => setTimeout(r, 1000));
+        log('Applied connection profile:', profileName);
+    } else {
+        log('Connection profile already active:', profileName);
     }
 }
 
@@ -129,9 +119,8 @@ async function generateRecap(history) {
     const s = getSettings();
     const prompt = s.promptTemplate.replace('{{messages}}', history);
     isGenerating = true;
-    const previousPreset = getCurrentPresetName();
     try {
-        if (s.preset) await applyPreset(s.preset);
+        if (s.connectionProfile) await applyConnectionProfile(s.connectionProfile);
 
         const { generateQuietPrompt, generateRaw } = scriptModule;
         let result = null;
@@ -149,9 +138,6 @@ async function generateRecap(history) {
         log('Generation failed:', e);
         return null;
     } finally {
-        if (previousPreset && previousPreset !== getCurrentPresetName()) {
-            await applyPreset(previousPreset);
-        }
         isGenerating = false;
     }
 }
@@ -266,9 +252,9 @@ function initSettings() {
                 <div class="inline-drawer-content">
                     <div class="chat-recap-settings">
                         <div class="chat-recap-setting-row">
-                            <label for="chatrecap_preset">Preset</label>
-                            <select id="chatrecap_preset" class="text_pole wide100p">
-                                <option value="">Default (no preset)</option>
+                            <label for="chatrecap_profile">Connection Profile</label>
+                            <select id="chatrecap_profile" class="text_pole wide100p">
+                                <option value="">Default (current settings)</option>
                             </select>
                         </div>
                         <div class="chat-recap-setting-row">
@@ -303,25 +289,25 @@ function initSettings() {
     const settingsEl = tempDiv.firstElementChild;
     container.appendChild(settingsEl);
 
-    const presetSelect = settingsEl.querySelector('#chatrecap_preset');
+    const profileSelect = settingsEl.querySelector('#chatrecap_profile');
     const thresholdInput = settingsEl.querySelector('#chatrecap_threshold');
     const tokensInput = settingsEl.querySelector('#chatrecap_max_tokens');
     const showTimeCheck = settingsEl.querySelector('#chatrecap_show_time');
     const templateArea = settingsEl.querySelector('#chatrecap_template');
 
-    if (presetSelect) {
-        const presets = getPresetNames();
-        for (const name of presets) {
+    if (profileSelect) {
+        const profiles = getConnectionProfiles();
+        for (const name of profiles) {
             if (!name) continue;
             const opt = document.createElement('option');
             opt.value = name;
             opt.textContent = name;
-            if (s.preset === name) opt.selected = true;
-            presetSelect.appendChild(opt);
+            if (s.connectionProfile === name) opt.selected = true;
+            profileSelect.appendChild(opt);
         }
-        presetSelect.addEventListener('change', () => {
-            const selected = presetSelect.options[presetSelect.selectedIndex];
-            s.preset = selected ? selected.textContent.trim() : '';
+        profileSelect.addEventListener('change', () => {
+            const selected = profileSelect.options[profileSelect.selectedIndex];
+            s.connectionProfile = selected ? selected.textContent.trim() : '';
             saveSettings();
         });
     }
@@ -357,7 +343,7 @@ function initSettings() {
 }
 
 export async function init() {
-    log('Initializing v1.0.3');
+    log('Initializing v1.0.4');
     await initModules();
     initSettings();
     const { eventSource, event_types } = scriptModule;
