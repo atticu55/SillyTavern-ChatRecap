@@ -275,35 +275,38 @@ function initSettings() {
                 </div>
                 <div class="inline-drawer-content">
                     <div class="chat-recap-settings">
-                        <div class="chat-recap-setting-row" style="margin-bottom:10px;">
-                            <button id="chatrecap_test" class="menu_button">Test Recap Now</button>
-                        </div>
                         <div class="chat-recap-setting-row">
                             <label for="chatrecap_connection_profile">Connection Profile</label>
                             <select id="chatrecap_connection_profile" class="text_pole">
                                 <option value="">Use Default Connection</option>
                             </select>
                         </div>
-                        <div class="chat-recap-setting-row">
-                            <label for="chatrecap_threshold">Time Threshold (hours)</label>
-                            <input id="chatrecap_threshold" type="number" class="text_pole" min="0" step="1" value="${s.thresholdHours}">
+                        <div class="chat-recap-setting-row chat-recap-setting-row-inline">
+                            <div class="chat-recap-inline-group">
+                                <label for="chatrecap_threshold">Time Threshold (hours)</label>
+                                <input id="chatrecap_threshold" type="number" class="neo-range-input" min="0" step="1" value="${s.thresholdHours}">
+                            </div>
+                            <div class="chat-recap-inline-group">
+                                <label for="chatrecap_max_tokens">Max Response Tokens</label>
+                                <input id="chatrecap_max_tokens" type="number" class="neo-range-input" min="1" step="1" value="${s.maxTokens}">
+                            </div>
                         </div>
                         <div class="chat-recap-setting-row">
-                            <label for="chatrecap_max_tokens">Max Response Tokens</label>
-                            <input id="chatrecap_max_tokens" type="number" class="text_pole" min="1" step="1" value="${s.maxTokens}">
-                        </div>
-                        <div class="chat-recap-setting-row">
-                            <label for="chatrecap_show_time">
+                            <label for="chatrecap_show_time" class="checkbox_label">
                                 <input id="chatrecap_show_time" type="checkbox" ${s.showTimeAway ? 'checked' : ''}>
                                 Show Time Away Label
                             </label>
                         </div>
                         <div class="chat-recap-setting-row">
-                            <label>Prompt Template (use {{messages}} placeholder)</label>
-                            <div class="flex-container alignitemscenter wide100p">
-                                <textarea id="chatrecap_template" class="text_pole textarea_compact wide100p" rows="4">${s.promptTemplate}</textarea>
-                                <div class="editor_maximize fa-solid fa-maximize" data-for="chatrecap_template" title="Maximize"></div>
+                            <div class="flex-container alignitemscenter wide100p gap5px">
+                                <label>Prompt Template</label>
+                                <span class="fa-solid fa-circle-info" title="Use {{messages}} as placeholder for chat history"></span>
+                                <div class="editor_maximize fa-solid fa-maximize" data-for="chatrecap_template" title="Maximize" style="margin-left:auto"></div>
                             </div>
+                            <textarea id="chatrecap_template" class="text_pole textarea_compact wide100p" rows="4" placeholder="e.g., Summarize the key events, character development, and emotional moments...">${s.promptTemplate}</textarea>
+                        </div>
+                        <div class="chat-recap-setting-row">
+                            <button id="chatrecap_test" class="menu_button" style="width:100%">Test Recap Now</button>
                         </div>
                     </div>
                 </div>
@@ -388,7 +391,7 @@ function initSettings() {
 }
 
 export async function init() {
-    log('Initializing v1.3.6');
+    log('Initializing v1.3.7');
     await initModules();
     initSettings();
     const { eventSource, event_types } = scriptModule;

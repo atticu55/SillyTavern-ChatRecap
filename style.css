@@ -40,6 +40,19 @@
     gap: 4px;
 }
 
+.chat-recap-setting-row-inline {
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 16px;
+}
+
+.chat-recap-inline-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
 .chat-recap-setting-row label {
     font-weight: bold;
     color: var(--SmartThemeBodyColor, #fff);
@@ -60,13 +73,5 @@
 }
 
 .chat-recap-setting-row textarea {
-    width: 100%;
-    padding: 8px;
-    background: var(--SmartThemeBlurTintColor, #222);
-    border: 1px solid var(--SmartThemeBorderColor, #444);
-    color: var(--SmartThemeBodyColor, #fff);
-    border-radius: 4px;
     font-family: monospace;
-    font-size: 0.9em;
-    resize: vertical;
 }
