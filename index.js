@@ -173,6 +173,10 @@ async function showRecap(summary, timeAwayText) {
         allowVerticalScrolling: true,
         animation: 'slow',
         onOpen: (dlg) => {
+            // Hide the default X close button since we have our own
+            const xBtn = dlg.dlg?.querySelector('.popup-button-close');
+            if (xBtn) xBtn.style.display = 'none';
+            
             const btn = dlg.content.querySelector('.recap-close-button');
             if (btn) btn.addEventListener('click', () => dlg.completeCancelled());
         },
