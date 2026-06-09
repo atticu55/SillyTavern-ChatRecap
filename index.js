@@ -9,6 +9,7 @@ const defaultSettings = Object.freeze({
     maxTokens: 256,
     promptTemplate: 'Summarize what has happened in this conversation so far. Keep it brief but include key events, decisions, and emotional beats.\n\n{{messages}}',
     showTimeAway: true,
+    connectionProfile: '',
 });
 
 let isGenerating = false;
@@ -16,6 +17,7 @@ let currentPopup = null;
 let scriptModule = null;
 let extensionsModule = null;
 let popupModule = null;
+let connectionManagerService = null;
 
 function log(...args) {
     console.log(LOG_PREFIX, ...args);
@@ -36,6 +38,14 @@ async function initModules() {
     scriptModule = await loadModule(['../../../script.js', '../../../../script.js']);
     extensionsModule = await loadModule(['../../extensions.js', '../../../extensions.js']);
     popupModule = await loadModule(['../../popup.js', '../../../popup.js']);
+    try {
+        const sharedModule = await loadModule(['../shared.js', '../../extensions/shared.js']);
+        connectionManagerService = sharedModule?.ConnectionManagerRequestService || null;
+        log('ConnectionManagerRequestService loaded:', !!connectionManagerService);
+    } catch (e) {
+        log('ConnectionManagerRequestService not available:', e.message);
+        connectionManagerService = null;
+    }
 }
 
 function getSettings() {
@@ -98,24 +108,38 @@ async function generateRecap(history) {
     const prompt = s.promptTemplate.replace('{{messages}}', history);
     isGenerating = true;
     try {
-        const { generateQuietPrompt, generateRaw } = scriptModule;
-        let result = null;
-        if (typeof generateRaw === 'function') {
-            log('Calling generateRaw with', prompt.length, 'chars');
-            result = await generateRaw({ prompt, systemPrompt: 'Summarize this roleplay conversation concisely, focusing on key events, character development, and emotional moments. Write 3-5 paragraphs in an engaging narrative style.', responseLength: s.maxTokens, quietToLoud: false });
-            log('generateRaw raw result type:', typeof result, '| value:', result === null ? 'null' : result === undefined ? 'undefined' : result.length + ' chars');
-            result = result?.trim() || null;
+        // If user selected a connection profile, use ConnectionManagerRequestService
+        if (s.connectionProfile && connectionManagerService) {
+            log('Using connection profile:', s.connectionProfile);
+            const messages = [
+                { role: 'system', content: 'Summarize this roleplay conversation concisely, focusing on key events, character development, and emotional moments. Write 3-5 paragraphs in an engaging narrative style.' },
+                { role: 'user', content: prompt }
+            ];
+            const response = await connectionManagerService.sendRequest(
+                s.connectionProfile,
+                messages,
+                s.maxTokens,
+                { extractData: true, stream: false }
+            );
+            log('ConnectionManager response type:', typeof response, '| has content:', !!response?.content);
+            const result = response?.content?.trim() || null;
             log('After trim:', result === null ? 'null' : result.length + ' chars');
-        } else if (typeof generateQuietPrompt === 'function') {
-            log('Falling back to generateRaw');
-            result = await generateRaw({ prompt, systemPrompt: 'You are a helpful assistant that summarizes roleplay conversations concisely.', responseLength: s.maxTokens });
-            log('generateRaw raw result type:', typeof result, '| value:', result === null ? 'null' : result === undefined ? 'undefined' : result.length + ' chars');
-            result = result?.trim() || null;
-            log('After trim:', result === null ? 'null' : result.length + ' chars');
-        } else {
-            log('No generation API available');
+            return result;
         }
-        return result;
+
+        // Fallback to generateRaw if no profile selected
+        const { generateRaw } = scriptModule;
+        if (typeof generateRaw === 'function') {
+            log('No profile selected, using generateRaw with', prompt.length, 'chars');
+            const result = await generateRaw({ prompt, systemPrompt: 'Summarize this roleplay conversation concisely, focusing on key events, character development, and emotional moments. Write 3-5 paragraphs in an engaging narrative style.', responseLength: s.maxTokens, quietToLoud: false });
+            log('generateRaw raw result type:', typeof result, '| value:', result === null ? 'null' : result === undefined ? 'undefined' : result.length + ' chars');
+            const trimmed = result?.trim() || null;
+            log('After trim:', trimmed === null ? 'null' : trimmed.length + ' chars');
+            return trimmed;
+        }
+
+        log('No generation API available');
+        return null;
     } catch (e) {
         log('Generation failed:', e);
         return null;
@@ -238,6 +262,12 @@ function initSettings() {
                             <button id="chatrecap_test" class="menu_button">Test Recap Now</button>
                         </div>
                         <div class="chat-recap-setting-row">
+                            <label for="chatrecap_connection_profile">Connection Profile</label>
+                            <select id="chatrecap_connection_profile" class="text_pole">
+                                <option value="">Use Default Connection</option>
+                            </select>
+                        </div>
+                        <div class="chat-recap-setting-row">
                             <label for="chatrecap_threshold">Time Threshold (hours)</label>
                             <input id="chatrecap_threshold" type="number" class="text_pole" min="0" step="1" value="${s.thresholdHours}">
                         </div>
@@ -270,6 +300,7 @@ function initSettings() {
     container.appendChild(settingsEl);
 
     const testBtn = settingsEl.querySelector('#chatrecap_test');
+    const profileSelect = settingsEl.querySelector('#chatrecap_connection_profile');
     const thresholdInput = settingsEl.querySelector('#chatrecap_threshold');
     const tokensInput = settingsEl.querySelector('#chatrecap_max_tokens');
     const showTimeCheck = settingsEl.querySelector('#chatrecap_show_time');
@@ -280,6 +311,22 @@ function initSettings() {
             log('Manual test triggered');
             checkAndShowRecap(true);
         });
+    }
+
+    if (profileSelect && connectionManagerService) {
+        try {
+            connectionManagerService.handleDropdown(
+                '#chatrecap_connection_profile',
+                s.connectionProfile,
+                (profile) => {
+                    s.connectionProfile = profile?.id || '';
+                    saveSettings();
+                    log('Selected profile:', s.connectionProfile || '(default)');
+                }
+            );
+        } catch (e) {
+            log('Failed to initialize profile dropdown:', e.message);
+        }
     }
 
     if (thresholdInput) {
@@ -324,7 +371,7 @@ function initSettings() {
 }
 
 export async function init() {
-    log('Initializing v1.2.2');
+    log('Initializing v1.3.0');
     await initModules();
     initSettings();
     const { eventSource, event_types } = scriptModule;
