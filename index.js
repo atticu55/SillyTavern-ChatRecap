@@ -388,7 +388,7 @@ function initSettings() {
 }
 
 export async function init() {
-    log('Initializing v1.3.5');
+    log('Initializing v1.3.6');
     await initModules();
     initSettings();
     const { eventSource, event_types } = scriptModule;

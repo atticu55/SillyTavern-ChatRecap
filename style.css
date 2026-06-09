@@ -9,13 +9,12 @@
 
 .recap-time {
     font-size: 0.85em;
-    color: var(--SmartThemeQuoteColor, #aaa);
+    color: var(--SmartThemeEmColor, #aaa);
     margin-bottom: 16px;
 }
 
 .recap-body {
     line-height: 1.6;
-    white-space: pre-wrap;
     color: var(--SmartThemeBodyColor, #eee);
     max-height: 50vh;
     overflow-y: auto;
