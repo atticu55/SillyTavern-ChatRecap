@@ -162,11 +162,11 @@ async function showRecap(summary, timeAwayText) {
     const { POPUP_TYPE, Popup } = popupModule;
     const html = `
         <div class="chat-recap-container">
-            <div class="recap-title">Where you left off</div>
+            <h3 class="recap-title">Where you left off</h3>
             <hr class="recap-divider">
             ${timeAwayText ? `<div class="recap-time">Last seen ${escapeHtml(timeAwayText)}</div>` : ''}
             <div class="recap-body">${escapeHtml(summary).replace(/\n/g, '<br>')}</div>
-            <button class="recap-close-button">Close Summary</button>
+            <button class="recap-close-button menu_button">Close Summary</button>
         </div>`;
     const popup = new Popup(html, POPUP_TYPE.DISPLAY, null, {
         wide: true,
