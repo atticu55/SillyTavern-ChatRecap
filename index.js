@@ -14,6 +14,7 @@ const defaultSettings = Object.freeze({
 
 let isGenerating = false;
 let currentPopup = null;
+let lastRecapShownChatId = null;
 let scriptModule = null;
 let extensionsModule = null;
 let popupModule = null;
@@ -182,6 +183,8 @@ async function showRecap(summary, timeAwayText) {
         },
     });
     currentPopup = popup;
+    const { getCurrentChatId } = scriptModule;
+    lastRecapShownChatId = getCurrentChatId?.() || null;
     popup.show().then(() => { currentPopup = null; }).catch(e => { log('Popup error:', e); currentPopup = null; });
 }
 
@@ -239,8 +242,15 @@ async function checkAndShowRecap(force = false) {
     }
 }
 
-function onChatChanged() {
+function onChatChanged(eventData) {
     try {
+        const { getCurrentChatId } = scriptModule;
+        const currentChatId = getCurrentChatId?.() || null;
+        // Skip recap if this is just a chat reload (same chat ID) and we already showed a recap for it
+        if (currentChatId && currentChatId === lastRecapShownChatId) {
+            log('Chat reload for same chat, skipping recap');
+            return;
+        }
         if (isGenerating) log('Generation aborted - chat changed');
         if (currentPopup) { try { currentPopup.completeCancelled(); } catch (_e) {} currentPopup = null; }
         isGenerating = false;
