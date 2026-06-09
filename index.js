@@ -123,11 +123,15 @@ async function generateRecap(history) {
                 { extractData: true, stream: false }
             );
             log('ConnectionManager response type:', typeof response, '| has content:', !!response?.content, '| has reasoning:', !!response?.reasoning);
-            // Handle both standard LLMs (content field) and reasoning models (reasoning field)
             const content = response?.content || '';
             const reasoning = response?.reasoning || '';
-            const result = content?.trim() || reasoning?.trim() || null;
-            log('Content length:', content?.length || 0, '| Reasoning length:', reasoning?.length || 0, '| Final:', result === null ? 'null' : result.length + ' chars');
+            // Only accept clean text output; never expose raw reasoning chains
+            if (!content?.trim() && reasoning?.trim()) {
+                log('WARNING: content is empty but reasoning is present. Disable "Request Model Reasoning" in SillyTavern for clean recaps.');
+                return null;
+            }
+            const result = content?.trim() || null;
+            log('Content length:', content?.length || 0, '| Final:', result === null ? 'null' : result.length + ' chars');
             return result;
         }
 
@@ -137,11 +141,15 @@ async function generateRecap(history) {
             log('No profile selected, using generateRawData with', prompt.length, 'chars');
             const data = await generateRawData({ prompt, systemPrompt: 'Summarize this roleplay conversation concisely, focusing on key events, character development, and emotional moments. Write 3-5 paragraphs in an engaging narrative style.', responseLength: s.maxTokens, quietToLoud: false });
             log('generateRawData raw response type:', typeof data, '| isArray:', Array.isArray(data), '| keys:', data && typeof data === 'object' ? Object.keys(data).join(',') : 'N/A');
-            // Handle both standard LLMs (content field) and reasoning models (reasoning field)
             const content = data?.content || '';
             const reasoning = data?.reasoning || '';
-            const result = content?.trim() || reasoning?.trim() || null;
-            log('Content length:', content?.length || 0, '| Reasoning length:', reasoning?.length || 0, '| Final:', result === null ? 'null' : result.length + ' chars');
+            // Only accept clean text output; never expose raw reasoning chains
+            if (!content?.trim() && reasoning?.trim()) {
+                log('WARNING: content is empty but reasoning is present. Disable "Request Model Reasoning" in SillyTavern for clean recaps.');
+                return null;
+            }
+            const result = content?.trim() || null;
+            log('Content length:', content?.length || 0, '| Final:', result === null ? 'null' : result.length + ' chars');
             return result;
         }
 
@@ -163,7 +171,7 @@ async function showRecap(summary, timeAwayText) {
     const { POPUP_TYPE, Popup } = popupModule;
     const html = `
         <div class="chat-recap-container">
-            <h1 class="recap-title">Where you left off</h1>
+            <h2 class="recap-title">Where you left off</h2>
             <hr class="recap-divider">
             ${timeAwayText ? `<div class="recap-time">Last seen ${escapeHtml(timeAwayText)}</div>` : ''}
             <div class="recap-body">${escapeHtml(summary).replace(/\n/g, '<br>')}</div>
