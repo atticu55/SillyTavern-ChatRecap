@@ -4,18 +4,18 @@
 .chat-recap-container {
     padding: 16px 20px;
     max-width: 100%;
-    background: var(--SmartThemeBlurTintColor, #1a1a1a);
+    background: var(--SmartThemeBlurTintColor);
 }
 
 .recap-time {
     font-size: 0.85em;
-    color: var(--SmartThemeEmColor, #aaa);
+    color: var(--SmartThemeEmColor);
     margin-bottom: 16px;
 }
 
 .recap-body {
     line-height: 1.6;
-    color: var(--SmartThemeBodyColor, #eee);
+    color: var(--SmartThemeBodyColor);
     max-height: 50vh;
     overflow-y: auto;
     margin-bottom: 20px;
@@ -55,23 +55,16 @@
 
 .chat-recap-setting-row label {
     font-weight: bold;
-    color: var(--SmartThemeBodyColor, #fff);
+    color: var(--SmartThemeBodyColor);
+    text-align: center;
 }
 
-.chat-recap-setting-row input[type="number"] {
-    width: 100px;
-    padding: 4px 8px;
-    background: var(--SmartThemeBlurTintColor, #222);
-    border: 1px solid var(--SmartThemeBorderColor, #444);
-    color: var(--SmartThemeBodyColor, #fff);
-    border-radius: 4px;
-}
 
-.chat-recap-setting-row input[type="checkbox"] {
-    width: auto;
-    margin-top: 4px;
-}
 
 .chat-recap-setting-row textarea {
     font-family: monospace;
+}
+
+.editor_maximize {
+    color: var(--SmartThemeEmColor);
 }

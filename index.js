@@ -281,6 +281,7 @@ function initSettings() {
                                 <option value="">Use Default Connection</option>
                             </select>
                         </div>
+                        <hr>
                         <div class="chat-recap-setting-row chat-recap-setting-row-inline">
                             <div class="chat-recap-inline-group">
                                 <label for="chatrecap_threshold">Time Threshold (hours)</label>
@@ -297,11 +298,12 @@ function initSettings() {
                                 Show Time Away Label
                             </label>
                         </div>
+                        <hr>
                         <div class="chat-recap-setting-row">
                             <div class="flex-container alignitemscenter wide100p gap5px">
                                 <label>Prompt Template</label>
-                                <span class="fa-solid fa-circle-info" title="Use {{messages}} as placeholder for chat history"></span>
-                                <div class="editor_maximize fa-solid fa-maximize" data-for="chatrecap_template" title="Maximize" style="margin-left:auto"></div>
+                                <span class="fa-solid fa-circle-info opacity50p" title="Use {{messages}} as placeholder for chat history"></span>
+                                <div class="editor_maximize fa-solid fa-maximize right_menu_button interactable" data-for="chatrecap_template" title="Maximize"></div>
                             </div>
                             <textarea id="chatrecap_template" class="text_pole textarea_compact wide100p" rows="4" placeholder="e.g., Summarize the key events, character development, and emotional moments...">${s.promptTemplate}</textarea>
                         </div>
@@ -391,7 +393,7 @@ function initSettings() {
 }
 
 export async function init() {
-    log('Initializing v1.3.7');
+    log('Initializing v1.3.8');
     await initModules();
     initSettings();
     const { eventSource, event_types } = scriptModule;
