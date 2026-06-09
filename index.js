@@ -39,7 +39,7 @@ async function initModules() {
     extensionsModule = await loadModule(['../../extensions.js', '../../../extensions.js']);
     popupModule = await loadModule(['../../popup.js', '../../../popup.js']);
     try {
-        const sharedModule = await loadModule(['../shared.js', '../../extensions/shared.js']);
+        const sharedModule = await loadModule(['../shared.js', '../../shared.js']);
         connectionManagerService = sharedModule?.ConnectionManagerRequestService || null;
         log('ConnectionManagerRequestService loaded:', !!connectionManagerService);
     } catch (e) {
@@ -121,21 +121,27 @@ async function generateRecap(history) {
                 s.maxTokens,
                 { extractData: true, stream: false }
             );
-            log('ConnectionManager response type:', typeof response, '| has content:', !!response?.content);
-            const result = response?.content?.trim() || null;
-            log('After trim:', result === null ? 'null' : result.length + ' chars');
+            log('ConnectionManager response type:', typeof response, '| has content:', !!response?.content, '| has reasoning:', !!response?.reasoning);
+            // Handle both standard LLMs (content field) and reasoning models (reasoning field)
+            const content = response?.content || '';
+            const reasoning = response?.reasoning || '';
+            const result = content?.trim() || reasoning?.trim() || null;
+            log('Content length:', content?.length || 0, '| Reasoning length:', reasoning?.length || 0, '| Final:', result === null ? 'null' : result.length + ' chars');
             return result;
         }
 
-        // Fallback to generateRaw if no profile selected
-        const { generateRaw } = scriptModule;
-        if (typeof generateRaw === 'function') {
-            log('No profile selected, using generateRaw with', prompt.length, 'chars');
-            const result = await generateRaw({ prompt, systemPrompt: 'Summarize this roleplay conversation concisely, focusing on key events, character development, and emotional moments. Write 3-5 paragraphs in an engaging narrative style.', responseLength: s.maxTokens, quietToLoud: false });
-            log('generateRaw raw result type:', typeof result, '| value:', result === null ? 'null' : result === undefined ? 'undefined' : result.length + ' chars');
-            const trimmed = result?.trim() || null;
-            log('After trim:', trimmed === null ? 'null' : trimmed.length + ' chars');
-            return trimmed;
+        // Fallback to generateRawData if no profile selected
+        const { generateRawData } = scriptModule;
+        if (typeof generateRawData === 'function') {
+            log('No profile selected, using generateRawData with', prompt.length, 'chars');
+            const data = await generateRawData({ prompt, systemPrompt: 'Summarize this roleplay conversation concisely, focusing on key events, character development, and emotional moments. Write 3-5 paragraphs in an engaging narrative style.', responseLength: s.maxTokens, quietToLoud: false });
+            log('generateRawData raw response type:', typeof data, '| isArray:', Array.isArray(data), '| keys:', data && typeof data === 'object' ? Object.keys(data).join(',') : 'N/A');
+            // Handle both standard LLMs (content field) and reasoning models (reasoning field)
+            const content = data?.content || '';
+            const reasoning = data?.reasoning || '';
+            const result = content?.trim() || reasoning?.trim() || null;
+            log('Content length:', content?.length || 0, '| Reasoning length:', reasoning?.length || 0, '| Final:', result === null ? 'null' : result.length + ' chars');
+            return result;
         }
 
         log('No generation API available');
@@ -371,7 +377,7 @@ function initSettings() {
 }
 
 export async function init() {
-    log('Initializing v1.3.0');
+    log('Initializing v1.3.1');
     await initModules();
     initSettings();
     const { eventSource, event_types } = scriptModule;
