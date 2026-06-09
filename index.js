@@ -135,22 +135,11 @@ async function generateRecap(history) {
             return result;
         }
 
-        // Fallback to generateRawData if no profile selected
-        const { generateRawData } = scriptModule;
-        if (typeof generateRawData === 'function') {
-            log('No profile selected, using generateRawData with', prompt.length, 'chars');
-            const data = await generateRawData({ prompt, systemPrompt: 'Summarize this roleplay conversation concisely, focusing on key events, character development, and emotional moments. Write 3-5 paragraphs in an engaging narrative style.', responseLength: s.maxTokens, quietToLoud: false });
-            log('generateRawData raw response type:', typeof data, '| isArray:', Array.isArray(data), '| keys:', data && typeof data === 'object' ? Object.keys(data).join(',') : 'N/A');
-            const content = data?.content || '';
-            const reasoning = data?.reasoning || '';
-            // Only accept clean text output; never expose raw reasoning chains
-            if (!content?.trim() && reasoning?.trim()) {
-                log('WARNING: content is empty but reasoning is present. Disable "Request Model Reasoning" in SillyTavern for clean recaps.');
-                return null;
-            }
-            const result = content?.trim() || null;
-            log('Content length:', content?.length || 0, '| Final:', result === null ? 'null' : result.length + ' chars');
-            return result;
+        // Fallback to generateRaw if no profile selected
+        const { generateRaw } = scriptModule;
+        if (typeof generateRaw === 'function') {
+            const text = await generateRaw({ prompt, systemPrompt: 'Summarize this roleplay conversation concisely, focusing on key events, character development, and emotional moments. Write 3-5 paragraphs in an engaging narrative style.', responseLength: s.maxTokens, quietToLoud: false });
+            return text?.trim() || null;
         }
 
         log('No generation API available');
@@ -399,7 +388,7 @@ function initSettings() {
 }
 
 export async function init() {
-    log('Initializing v1.3.1');
+    log('Initializing v1.3.5');
     await initModules();
     initSettings();
     const { eventSource, event_types } = scriptModule;
