@@ -8,6 +8,9 @@
     "author": "phampyk",
     "version": "1.3.8",
     "homePage": "https://github.com/atticu55/SillyTavern-ChatRecap",
+    "i18n": {
+        "en": "i18n/en.json"
+    },
     "hooks": {
         "activate": "init"
     }

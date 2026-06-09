@@ -90,9 +90,26 @@ function getLastMessageTime(ctx) {
 function formatTimeAway(timestamp) {
     if (!timestamp || typeof timestamp !== 'number') return '';
     const hours = (Date.now() - timestamp) / (1000 * 60 * 60);
-    if (hours < 1) return `${Math.round(hours * 60)}m ago`;
-    if (hours < 24) return `${Math.round(hours)}h ago`;
-    return `${Math.round(hours / 24)}d ago`;
+    const t = window.SillyTavern?.getContext()?.t;
+    const _t = (key, val) => {
+        if (!t) return val;
+        try {
+            const translated = t[key] || val;
+            return translated;
+        } catch (_e) {
+            return val;
+        }
+    };
+    if (hours < 1) {
+        const mins = Math.round(hours * 60);
+        return _t('CR_Time_MinutesAgo', '{0} minutes ago').replace('{0}', mins);
+    }
+    if (hours < 24) {
+        const h = Math.round(hours);
+        return _t('CR_Time_HoursAgo', '{0} hours ago').replace('{0}', h);
+    }
+    const days = Math.round(hours / 24);
+    return _t('CR_Time_DaysAgo', '{0} days ago').replace('{0}', days);
 }
 
 function buildChatHistory() {
@@ -164,7 +181,7 @@ async function showRecap(summary, timeAwayText) {
             <hr class="recap-divider">
             ${timeAwayText ? `<div class="recap-time">Last seen ${escapeHtml(timeAwayText)}</div>` : ''}
             <div class="recap-body">${escapeHtml(summary).replace(/\n/g, '<br>')}</div>
-            <button class="recap-close-button menu_button">Close Summary</button>
+            <button class="recap-close-button menu_button" data-i18n="CR_Popup_Close">Close Summary</button>
         </div>`;
     const popup = new Popup(html, POPUP_TYPE.DISPLAY, null, {
         wide: true,
@@ -276,24 +293,24 @@ function initSettings() {
                 <div class="inline-drawer-content">
                     <div class="chat-recap-settings">
                         <div class="chat-recap-setting-row">
-                            <label for="chatrecap_connection_profile">Connection Profile</label>
+                            <label for="chatrecap_connection_profile" data-i18n="CR_Settings_ConnectionProfile">Connection Profile</label>
                             <select id="chatrecap_connection_profile" class="text_pole">
-                                <option value="">Use Default Connection</option>
+                                <option value="" data-i18n="CR_Settings_DefaultConnection">Use Default Connection</option>
                             </select>
                         </div>
                         <hr>
                         <div class="chat-recap-setting-row chat-recap-setting-row-inline">
                             <div class="chat-recap-inline-group">
-                                <label for="chatrecap_threshold">Time Threshold (hours)</label>
+                                <label for="chatrecap_threshold" data-i18n="CR_Settings_TimeThreshold">Time Threshold (hours)</label>
                                 <input id="chatrecap_threshold" type="number" class="neo-range-input" min="0" step="1" value="${s.thresholdHours}">
                             </div>
                             <div class="chat-recap-inline-group">
-                                <label for="chatrecap_max_tokens">Max Response Tokens</label>
+                                <label for="chatrecap_max_tokens" data-i18n="CR_Settings_MaxTokens">Max Response Tokens</label>
                                 <input id="chatrecap_max_tokens" type="number" class="neo-range-input" min="1" step="1" value="${s.maxTokens}">
                             </div>
                         </div>
                         <div class="chat-recap-setting-row">
-                            <label for="chatrecap_show_time" class="checkbox_label">
+                            <label for="chatrecap_show_time" class="checkbox_label" data-i18n="CR_Settings_ShowTimeAway">
                                 <input id="chatrecap_show_time" type="checkbox" ${s.showTimeAway ? 'checked' : ''}>
                                 Show Time Away Label
                             </label>
@@ -301,14 +318,14 @@ function initSettings() {
                         <hr>
                         <div class="chat-recap-setting-row">
                             <div class="flex-container alignitemscenter wide100p gap5px">
-                                <label>Prompt Template</label>
-                                <span class="fa-solid fa-circle-info opacity50p" title="Use {{messages}} as placeholder for chat history"></span>
+                                <label data-i18n="CR_Settings_PromptTemplate">Prompt Template</label>
+                                <span class="fa-solid fa-circle-info opacity50p" data-i18n="[title]CR_Tooltip_Placeholder" title="Use {{messages}} as placeholder for chat history"></span>
                                 <div class="editor_maximize fa-solid fa-maximize right_menu_button interactable" data-for="chatrecap_template" title="Maximize"></div>
                             </div>
-                            <textarea id="chatrecap_template" class="text_pole textarea_compact wide100p" rows="4" placeholder="e.g., Summarize the key events, character development, and emotional moments...">${s.promptTemplate}</textarea>
+                            <textarea id="chatrecap_template" class="text_pole textarea_compact wide100p" rows="4" data-i18n="[placeholder]CR_Textarea_Placeholder" placeholder="e.g., Summarize the key events, character development, and emotional moments...">${s.promptTemplate}</textarea>
                         </div>
                         <div class="chat-recap-setting-row">
-                            <button id="chatrecap_test" class="menu_button" style="width:100%">Test Recap Now</button>
+                            <button id="chatrecap_test" class="menu_button" style="width:100%" data-i18n="CR_Settings_TestRecap">Test Recap Now</button>
                         </div>
                     </div>
                 </div>
