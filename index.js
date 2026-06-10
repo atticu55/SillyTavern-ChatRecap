@@ -21,6 +21,7 @@ let extensionsModule = null;
 let popupModule = null;
 let i18nModule = null;
 let connectionManagerService = null;
+let DOMPurify = null;
 
 function log(...args) {
     console.log(LOG_PREFIX, ...args);
@@ -55,6 +56,14 @@ async function initModules() {
     } catch (e) {
         log('i18n module not available:', e.message);
         i18nModule = null;
+    }
+    try {
+        const libModule = await loadModule(['../../../lib.js', '../../../../lib.js']);
+        DOMPurify = libModule?.DOMPurify || window.DOMPurify || null;
+        log('DOMPurify loaded:', !!DOMPurify);
+    } catch (e) {
+        log('DOMPurify not available:', e.message);
+        DOMPurify = window.DOMPurify || null;
     }
 }
 
@@ -202,12 +211,20 @@ async function showRecap(summary, timeAwayText) {
     const lastSeen = timeAwayText && translate
         ? translate('Last seen ${0}', 'CR_Popup_LastSeen').replace(/\$\{0\}/g, timeAwayText)
         : (timeAwayText ? `Last seen ${escapeHtml(timeAwayText)}` : '');
+    const { converter } = scriptModule || {};
+    let summaryHtml;
+    if (converter) {
+        const markdownHtml = converter.makeHtml(summary);
+        summaryHtml = DOMPurify ? DOMPurify.sanitize(markdownHtml) : markdownHtml;
+    } else {
+        summaryHtml = escapeHtml(summary).replace(/\n/g, '<br>');
+    }
     const html = `
         <div class="chat-recap-container">
             <h2 class="recap-title">${escapeHtml(title)}</h2>
             <hr class="recap-divider">
             ${lastSeen ? `<div class="recap-time">${escapeHtml(lastSeen)}</div>` : ''}
-            <div class="recap-body">${escapeHtml(summary).replace(/\n/g, '<br>')}</div>
+            <div class="recap-body">${summaryHtml}</div>
             <button class="recap-close-button menu_button" data-i18n="CR_Popup_Close">Close Summary</button>
         </div>`;
     const popup = new Popup(html, POPUP_TYPE.DISPLAY, null, {
