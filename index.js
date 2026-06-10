@@ -224,7 +224,7 @@ async function showRecap(summary, timeAwayText) {
             <h2 class="recap-title">${escapeHtml(title)}</h2>
             <hr class="recap-divider">
             ${lastSeen ? `<div class="recap-time">${escapeHtml(lastSeen)}</div>` : ''}
-            <div class="recap-body">${summaryHtml}</div>
+            <div class="recap-body"><div class="mes_text">${summaryHtml}</div></div>
             <button class="recap-close-button menu_button" data-i18n="CR_Popup_Close">Close Summary</button>
         </div>`;
     const popup = new Popup(html, POPUP_TYPE.DISPLAY, null, {

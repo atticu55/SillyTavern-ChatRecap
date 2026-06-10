@@ -16,9 +16,28 @@
 .recap-body {
     line-height: 1.6;
     color: var(--SmartThemeBodyColor);
-    max-height: 50vh;
-    overflow-y: auto;
     margin-bottom: 20px;
+}
+
+/* Use SillyTavern's message text styling */
+.recap-body .mes_text {
+    color: var(--SmartThemeBodyColor);
+}
+
+.recap-body strong,
+.recap-body b {
+    color: var(--SmartThemeQuoteColor);
+}
+
+.recap-body em,
+.recap-body i {
+    color: var(--SmartThemeEmColor);
+}
+
+/* Remove the constrained box — let the popup scroll naturally */
+.recap-body {
+    max-height: none;
+    overflow-y: visible;
 }
 
 .recap-close-button {
