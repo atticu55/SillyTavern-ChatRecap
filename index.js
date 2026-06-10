@@ -233,7 +233,7 @@ async function showRecap(summary, timeAwayText) {
         <div class="chat-recap-container">
             <h2 class="recap-title">${escapeHtml(title)}</h2>
             <hr class="recap-divider">
-            ${lastSeen ? `<div class="recap-time">${escapeHtml(lastSeen)}</div>` : ''}
+            ${lastSeen ? `<div class="recap-time">${lastSeen}</div>` : ''}
             <div class="recap-body"><div class="mes_text">${summaryHtml}</div></div>
             <button class="recap-close-button menu_button" data-i18n="CR_Popup_Close">Close Summary</button>
         </div>`;
