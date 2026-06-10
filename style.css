@@ -3,8 +3,10 @@
 /* Popup Content */
 .chat-recap-container {
     padding: 16px 20px;
+    width: 100%;
     max-width: 100%;
     background: var(--SmartThemeBlurTintColor);
+    box-sizing: border-box;
 }
 
 .recap-time {
@@ -21,9 +23,61 @@
     margin-bottom: 20px;
 }
 
+/* Use SillyTavern's message text styling */
+.recap-body .mes_text {
+    color: var(--SmartThemeBodyColor);
+}
+
+.recap-body em,
+.recap-body i {
+    color: var(--SmartThemeEmColor);
+}
+
+.recap-body q {
+    color: var(--SmartThemeQuoteColor);
+}
+
+.recap-body q:before,
+.recap-body q:after {
+    content: '';
+}
+
+.recap-body q i,
+.recap-body q em {
+    color: inherit;
+}
+
+.recap-body u {
+    color: var(--SmartThemeUnderlineColor);
+}
+
+.recap-body blockquote {
+    border-left: 3px solid var(--SmartThemeQuoteColor);
+    padding-left: 10px;
+    background-color: var(--black30a);
+    margin: 0;
+}
+
+.recap-body strong,
+.recap-body b,
+.recap-body h1,
+.recap-body h2 {
+    font-weight: bold;
+}
+
 .recap-close-button {
     display: block;
     margin: 0 auto;
+}
+
+/* Mobile: wider text area, less padding */
+@media (max-width: 768px) {
+    .chat-recap-container {
+        padding: 12px 16px;
+    }
+    .recap-body {
+        max-height: 60vh;
+    }
 }
 
 /* Settings Panel */
@@ -58,8 +112,6 @@
     color: var(--SmartThemeBodyColor);
     text-align: center;
 }
-
-
 
 .chat-recap-setting-row textarea {
     font-family: monospace;

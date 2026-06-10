@@ -3,6 +3,7 @@ const MODULE_NAME = 'ChatRecap';
 const CHAT_CHANGE_DELAY_MS = 100;
 const INITIAL_CHECK_DELAY_MS = 500;
 const MAX_HISTORY_MESSAGES = 2000;
+const MAX_HISTORY_CHARS = 200000; // Intentionally higher; covers long RP sessions
 
 const defaultSettings = Object.freeze({
     thresholdHours: 24,
@@ -18,7 +19,9 @@ let lastRecapShownChatId = null;
 let scriptModule = null;
 let extensionsModule = null;
 let popupModule = null;
+let i18nModule = null;
 let connectionManagerService = null;
+let DOMPurify = null;
 
 function log(...args) {
     console.log(LOG_PREFIX, ...args);
@@ -46,6 +49,21 @@ async function initModules() {
     } catch (e) {
         log('ConnectionManagerRequestService not available:', e.message);
         connectionManagerService = null;
+    }
+    try {
+        i18nModule = await loadModule(['../../../i18n.js', '../../../../i18n.js']);
+        log('i18n module loaded:', !!i18nModule);
+    } catch (e) {
+        log('i18n module not available:', e.message);
+        i18nModule = null;
+    }
+    try {
+        const libModule = await loadModule(['../../../lib.js', '../../../../lib.js']);
+        DOMPurify = libModule?.DOMPurify || window.DOMPurify || null;
+        log('DOMPurify loaded:', !!DOMPurify);
+    } catch (e) {
+        log('DOMPurify not available:', e.message);
+        DOMPurify = window.DOMPurify || null;
     }
 }
 
@@ -90,9 +108,37 @@ function getLastMessageTime(ctx) {
 function formatTimeAway(timestamp) {
     if (!timestamp || typeof timestamp !== 'number') return '';
     const hours = (Date.now() - timestamp) / (1000 * 60 * 60);
-    if (hours < 1) return `${Math.round(hours * 60)}m ago`;
-    if (hours < 24) return `${Math.round(hours)}h ago`;
-    return `${Math.round(hours / 24)}d ago`;
+    const { translate } = i18nModule || {};
+    const _t = (key, val) => {
+        if (!translate) return val;
+        try {
+            return translate(val, key);
+        } catch (_e) {
+            return val;
+        }
+    };
+    if (hours < 1) {
+        const mins = Math.round(hours * 60);
+        return _t(mins === 1 ? 'CR_Time_MinuteAgo' : 'CR_Time_MinutesAgo', mins === 1 ? '{0} minute ago' : '{0} minutes ago').replace('{0}', mins);
+    }
+    if (hours < 24) {
+        const h = Math.round(hours);
+        return _t(h === 1 ? 'CR_Time_HourAgo' : 'CR_Time_HoursAgo', h === 1 ? '{0} hour ago' : '{0} hours ago').replace('{0}', h);
+    }
+    const days = Math.round(hours / 24);
+    if (days < 7) {
+        return _t(days === 1 ? 'CR_Time_DayAgo' : 'CR_Time_DaysAgo', days === 1 ? '{0} day ago' : '{0} days ago').replace('{0}', days);
+    }
+    const weeks = Math.round(days / 7);
+    if (weeks < 5) {
+        return _t(weeks === 1 ? 'CR_Time_WeekAgo' : 'CR_Time_WeeksAgo', weeks === 1 ? '{0} week ago' : '{0} weeks ago').replace('{0}', weeks);
+    }
+    const months = Math.round(days / 30);
+    if (months < 12) {
+        return _t(months === 1 ? 'CR_Time_MonthAgo' : 'CR_Time_MonthsAgo', months === 1 ? '{0} month ago' : '{0} months ago').replace('{0}', months);
+    }
+    const years = Math.round(days / 365);
+    return _t(years === 1 ? 'CR_Time_YearAgo' : 'CR_Time_YearsAgo', years === 1 ? '{0} year ago' : '{0} years ago').replace('{0}', years);
 }
 
 function buildChatHistory() {
@@ -101,13 +147,17 @@ function buildChatHistory() {
     if (!ctx?.chat?.length) return '';
     const msgs = ctx.chat.filter(m => !m.is_system);
     const slice = msgs.length > MAX_HISTORY_MESSAGES ? msgs.slice(-MAX_HISTORY_MESSAGES) : msgs;
-    return slice.map(m => `${m.is_user ? (ctx.name1 || 'User') : (m.name || 'Character')}: ${m.mes || ''}`).join('\n\n');
+    let history = slice.map(m => `${m.is_user ? (ctx.name1 || 'User') : (m.name || 'Character')}: ${m.mes || ''}`).join('\n\n');
+    if (history.length > MAX_HISTORY_CHARS) {
+        log(`History trimmed from ${history.length} to ${MAX_HISTORY_CHARS} chars`);
+        history = history.slice(-MAX_HISTORY_CHARS);
+    }
+    return history;
 }
 
 async function generateRecap(history) {
     const s = getSettings();
     const prompt = s.promptTemplate.replace('{{messages}}', history);
-    isGenerating = true;
     try {
         // If user selected a connection profile, use ConnectionManagerRequestService
         if (s.connectionProfile && connectionManagerService) {
@@ -124,9 +174,8 @@ async function generateRecap(history) {
             );
             log('ConnectionManager response type:', typeof response, '| has content:', !!response?.content, '| has reasoning:', !!response?.reasoning);
             const content = response?.content || '';
-            const reasoning = response?.reasoning || '';
             // Only accept clean text output; never expose raw reasoning chains
-            if (!content?.trim() && reasoning?.trim()) {
+            if (!content?.trim() && response?.reasoning?.trim()) {
                 log('WARNING: content is empty but reasoning is present. Disable "Request Model Reasoning" in SillyTavern for clean recaps.');
                 return null;
             }
@@ -147,8 +196,6 @@ async function generateRecap(history) {
     } catch (e) {
         log('Generation failed:', e);
         return null;
-    } finally {
-        isGenerating = false;
     }
 }
 
@@ -158,13 +205,37 @@ async function showRecap(summary, timeAwayText) {
         currentPopup = null;
     }
     const { POPUP_TYPE, Popup } = popupModule;
+    const { translate } = i18nModule || {};
+    const title = translate ? translate('Where you left off', 'CR_Popup_Title') : 'Where you left off';
+    const lastSeen = timeAwayText && translate
+        ? translate('Last seen ${0}', 'CR_Popup_LastSeen').replace(/\$\{0\}/g, escapeHtml(timeAwayText))
+        : (timeAwayText ? `Last seen ${escapeHtml(timeAwayText)}` : '');
+    const { converter } = scriptModule || {};
+    let summaryHtml;
+    if (converter) {
+        let mes = summary;
+        // Wrap quotes in <q> tags (same as SillyTavern's messageFormatting)
+        mes = mes.replace(/<style>[\s\S]*?<\/style>|```[\s\S]*?```|~~~[\s\S]*?~~~|``[\s\S]*?``|`[\s\S]*?`|(".*?")|(\u201C.*?\u201D)|(\u00AB.*?\u00BB)|(\u300C.*?\u300D)|(\u300E.*?\u300F)|(\uFF02.*?\uFF02)/gim, function (match, p1, p2, p3, p4, p5, p6) {
+            if (p1) return `<q>"${p1.slice(1, -1)}"</q>`;
+            else if (p2) return `<q>"${p2.slice(1, -1)}"</q>`;
+            else if (p3) return `<q>«${p3.slice(1, -1)}»</q>`;
+            else if (p4) return `<q>「${p4.slice(1, -1)}」</q>`;
+            else if (p5) return `<q>『${p5.slice(1, -1)}』</q>`;
+            else if (p6) return `<q>＂${p6.slice(1, -1)}＂</q>`;
+            else return match;
+        });
+        const markdownHtml = converter.makeHtml(mes);
+        summaryHtml = DOMPurify ? DOMPurify.sanitize(markdownHtml) : escapeHtml(summary).replace(/\n/g, '<br>');
+    } else {
+        summaryHtml = escapeHtml(summary).replace(/\n/g, '<br>');
+    }
     const html = `
         <div class="chat-recap-container">
-            <h2 class="recap-title">Where you left off</h2>
+            <h2 class="recap-title">${escapeHtml(title)}</h2>
             <hr class="recap-divider">
-            ${timeAwayText ? `<div class="recap-time">Last seen ${escapeHtml(timeAwayText)}</div>` : ''}
-            <div class="recap-body">${escapeHtml(summary).replace(/\n/g, '<br>')}</div>
-            <button class="recap-close-button menu_button">Close Summary</button>
+            ${lastSeen ? `<div class="recap-time">${lastSeen}</div>` : ''}
+            <div class="recap-body"><div class="mes_text">${summaryHtml}</div></div>
+            <button class="recap-close-button menu_button" data-i18n="CR_Popup_Close">Close Summary</button>
         </div>`;
     const popup = new Popup(html, POPUP_TYPE.DISPLAY, null, {
         wide: true,
@@ -188,12 +259,13 @@ async function showRecap(summary, timeAwayText) {
 async function checkAndShowRecap(force = false) {
     try {
         if (isGenerating) { log('Already generating, skipping'); return; }
+        isGenerating = true;
         const { getContext } = extensionsModule;
         const { getCurrentChatId } = scriptModule;
         const ctx = getContext();
-        if (!ctx?.chat?.length) { log('Chat not loaded, skipping'); return; }
+        if (!ctx?.chat?.length) { log('Chat not loaded, skipping'); isGenerating = false; return; }
         const chatKey = getCurrentChatId?.() || null;
-        if (!chatKey) { log('No chat key, skipping'); return; }
+        if (!chatKey) { log('No chat key, skipping'); isGenerating = false; return; }
 
         const lastMessageTime = getLastMessageTime(ctx);
 
@@ -204,6 +276,7 @@ async function checkAndShowRecap(force = false) {
         // If no messages yet, skip
         if (!lastMessageTime && !force) {
             log('No messages yet, skipping');
+            isGenerating = false;
             return;
         }
 
@@ -213,6 +286,7 @@ async function checkAndShowRecap(force = false) {
         // Skip if not enough time has passed since last message
         if (!force && hoursSinceMessage < s.thresholdHours) {
             log(`${hoursSinceMessage.toFixed(1)}h since last message < ${s.thresholdHours}h threshold, skipping`);
+            isGenerating = false;
             return;
         }
 
@@ -221,11 +295,12 @@ async function checkAndShowRecap(force = false) {
         log('History length:', history.length, 'chars');
         if (!history.trim()) {
             log('No history available');
+            isGenerating = false;
             return;
         }
 
         const summary = await generateRecap(history);
-        if (getCurrentChatId?.() !== chatKey) { log('Chat changed, discarding'); return; }
+        if (getCurrentChatId?.() !== chatKey) { log('Chat changed, discarding'); isGenerating = false; return; }
         if (summary) {
             log('Got summary, showing popup');
             await showRecap(summary, s.showTimeAway ? formatTimeAway(lastMessageTime) : '');
@@ -235,11 +310,12 @@ async function checkAndShowRecap(force = false) {
 
     } catch (e) {
         log('Error in checkAndShowRecap:', e);
+    } finally {
         isGenerating = false;
     }
 }
 
-function onChatChanged(eventData) {
+function onChatChanged(_eventData) {
     try {
         const { getCurrentChatId } = scriptModule;
         const currentChatId = getCurrentChatId?.() || null;
@@ -276,39 +352,39 @@ function initSettings() {
                 <div class="inline-drawer-content">
                     <div class="chat-recap-settings">
                         <div class="chat-recap-setting-row">
-                            <label for="chatrecap_connection_profile">Connection Profile</label>
+                            <label for="chatrecap_connection_profile" data-i18n="CR_Settings_ConnectionProfile">Connection Profile</label>
                             <select id="chatrecap_connection_profile" class="text_pole">
-                                <option value="">Use Default Connection</option>
+                                <option value="" data-i18n="CR_Settings_DefaultConnection">Use Default Connection</option>
                             </select>
                         </div>
                         <hr>
                         <div class="chat-recap-setting-row chat-recap-setting-row-inline">
                             <div class="chat-recap-inline-group">
-                                <label for="chatrecap_threshold">Time Threshold (hours)</label>
-                                <input id="chatrecap_threshold" type="number" class="neo-range-input" min="0" step="1" value="${s.thresholdHours}">
+                                <label for="chatrecap_threshold" data-i18n="CR_Settings_TimeThreshold">Time Threshold (hours)</label>
+                                <input id="chatrecap_threshold" type="number" class="neo-range-input" min="0" step="1" value="${escapeHtml(s.thresholdHours)}">
                             </div>
                             <div class="chat-recap-inline-group">
-                                <label for="chatrecap_max_tokens">Max Response Tokens</label>
-                                <input id="chatrecap_max_tokens" type="number" class="neo-range-input" min="1" step="1" value="${s.maxTokens}">
+                                <label for="chatrecap_max_tokens" data-i18n="CR_Settings_MaxTokens">Max Response Tokens</label>
+                                <input id="chatrecap_max_tokens" type="number" class="neo-range-input" min="1" step="1" value="${escapeHtml(s.maxTokens)}">
                             </div>
                         </div>
                         <div class="chat-recap-setting-row">
                             <label for="chatrecap_show_time" class="checkbox_label">
                                 <input id="chatrecap_show_time" type="checkbox" ${s.showTimeAway ? 'checked' : ''}>
-                                Show Time Away Label
+                                <span data-i18n="CR_Settings_ShowTimeAway">Show Time Away Label</span>
                             </label>
                         </div>
                         <hr>
                         <div class="chat-recap-setting-row">
                             <div class="flex-container alignitemscenter wide100p gap5px">
-                                <label>Prompt Template</label>
-                                <span class="fa-solid fa-circle-info opacity50p" title="Use {{messages}} as placeholder for chat history"></span>
+                                <label data-i18n="CR_Settings_PromptTemplate">Prompt Template</label>
+                                <span class="fa-solid fa-circle-info opacity50p" data-i18n="[title]CR_Tooltip_Placeholder" title="Use {{messages}} as placeholder for chat history"></span>
                                 <div class="editor_maximize fa-solid fa-maximize right_menu_button interactable" data-for="chatrecap_template" title="Maximize"></div>
                             </div>
-                            <textarea id="chatrecap_template" class="text_pole textarea_compact wide100p" rows="4" placeholder="e.g., Summarize the key events, character development, and emotional moments...">${s.promptTemplate}</textarea>
+                            <textarea id="chatrecap_template" class="text_pole textarea_compact wide100p" rows="4" data-i18n="[placeholder]CR_Textarea_Placeholder" placeholder="e.g., Summarize the key events, character development, and emotional moments...">${escapeHtml(s.promptTemplate)}</textarea>
                         </div>
                         <div class="chat-recap-setting-row">
-                            <button id="chatrecap_test" class="menu_button" style="width:100%">Test Recap Now</button>
+                            <button id="chatrecap_test" class="menu_button" style="width:100%" data-i18n="CR_Settings_TestRecap">Test Recap Now</button>
                         </div>
                     </div>
                 </div>
@@ -354,14 +430,14 @@ function initSettings() {
     if (thresholdInput) {
         thresholdInput.addEventListener('change', () => {
             const val = parseFloat(thresholdInput.value);
-            s.thresholdHours = Number.isFinite(val) && val > 0 ? val : s.thresholdHours;
+            s.thresholdHours = Number.isFinite(val) && val > 0 ? Math.min(val, 8760) : s.thresholdHours;
             saveSettings();
         });
     }
     if (tokensInput) {
         tokensInput.addEventListener('change', () => {
             const val = parseInt(tokensInput.value, 10);
-            s.maxTokens = Number.isFinite(val) && val > 0 ? val : s.maxTokens;
+            s.maxTokens = Number.isFinite(val) && val > 0 ? Math.min(val, 4096) : s.maxTokens;
             saveSettings();
         });
     }
@@ -379,21 +455,10 @@ function initSettings() {
     }
 
     log('Settings UI initialized');
-
-    // Expose debug helper
-    window.chatRecapDebug = async function() {
-        const { getContext } = extensionsModule;
-        const s = getSettings();
-        log('=== DEBUG ===');
-        log('Settings:', JSON.stringify(s));
-        log('Chat length:', getContext()?.chat?.length || 0);
-        log('Last message time:', getLastMessageTime(getContext()));
-        log('=============');
-    };
 }
 
 export async function init() {
-    log('Initializing v1.3.8');
+    log('Initializing v1.3.9');
     await initModules();
     initSettings();
     const { eventSource, event_types } = scriptModule;
