@@ -18,6 +18,7 @@ let lastRecapShownChatId = null;
 let scriptModule = null;
 let extensionsModule = null;
 let popupModule = null;
+let i18nModule = null;
 let connectionManagerService = null;
 
 function log(...args) {
@@ -46,6 +47,13 @@ async function initModules() {
     } catch (e) {
         log('ConnectionManagerRequestService not available:', e.message);
         connectionManagerService = null;
+    }
+    try {
+        i18nModule = await loadModule(['../../../i18n.js', '../../../../i18n.js']);
+        log('i18n module loaded:', !!i18nModule);
+    } catch (e) {
+        log('i18n module not available:', e.message);
+        i18nModule = null;
     }
 }
 
@@ -175,11 +183,16 @@ async function showRecap(summary, timeAwayText) {
         currentPopup = null;
     }
     const { POPUP_TYPE, Popup } = popupModule;
+    const { translate } = i18nModule || {};
+    const title = translate ? translate('Where you left off', 'CR_Popup_Title') : 'Where you left off';
+    const lastSeen = timeAwayText && translate
+        ? translate('Last seen ${0}', 'CR_Popup_LastSeen').replace(/\$\{0\}/g, timeAwayText)
+        : (timeAwayText ? `Last seen ${escapeHtml(timeAwayText)}` : '');
     const html = `
         <div class="chat-recap-container">
-            <h2 class="recap-title">Where you left off</h2>
+            <h2 class="recap-title">${escapeHtml(title)}</h2>
             <hr class="recap-divider">
-            ${timeAwayText ? `<div class="recap-time">Last seen ${escapeHtml(timeAwayText)}</div>` : ''}
+            ${lastSeen ? `<div class="recap-time">${escapeHtml(lastSeen)}</div>` : ''}
             <div class="recap-body">${escapeHtml(summary).replace(/\n/g, '<br>')}</div>
             <button class="recap-close-button menu_button" data-i18n="CR_Popup_Close">Close Summary</button>
         </div>`;
