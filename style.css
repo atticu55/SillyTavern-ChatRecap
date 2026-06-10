@@ -28,14 +28,36 @@
     color: var(--SmartThemeBodyColor);
 }
 
-.recap-body strong,
-.recap-body b {
-    color: var(--SmartThemeQuoteColor);
-}
-
 .recap-body em,
 .recap-body i {
     color: var(--SmartThemeEmColor);
+}
+
+.recap-body q {
+    color: var(--SmartThemeQuoteColor);
+}
+
+.recap-body q i,
+.recap-body q em {
+    color: inherit;
+}
+
+.recap-body u {
+    color: var(--SmartThemeUnderlineColor);
+}
+
+.recap-body blockquote {
+    border-left: 3px solid var(--SmartThemeQuoteColor);
+    padding-left: 10px;
+    background-color: var(--black30a);
+    margin: 0;
+}
+
+.recap-body strong,
+.recap-body b,
+.recap-body h1,
+.recap-body h2 {
+    font-weight: bold;
 }
 
 .recap-close-button {
