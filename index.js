@@ -214,7 +214,18 @@ async function showRecap(summary, timeAwayText) {
     const { converter } = scriptModule || {};
     let summaryHtml;
     if (converter) {
-        const markdownHtml = converter.makeHtml(summary);
+        let mes = summary;
+        // Wrap quotes in <q> tags (same as SillyTavern's messageFormatting)
+        mes = mes.replace(/<style>[\s\S]*?<\/style>|```[\s\S]*?```|~~~[\s\S]*?~~~|``[\s\S]*?``|`[\s\S]*?`|(".*?")|(\u201C.*?\u201D)|(\u00AB.*?\u00BB)|(\u300C.*?\u300D)|(\u300E.*?\u300F)|(\uFF02.*?\uFF02)/gim, function (match, p1, p2, p3, p4, p5, p6) {
+            if (p1) return `<q>"${p1.slice(1, -1)}"</q>`;
+            else if (p2) return `<q>"${p2.slice(1, -1)}"</q>`;
+            else if (p3) return `<q>«${p3.slice(1, -1)}»</q>`;
+            else if (p4) return `<q>「${p4.slice(1, -1)}」</q>`;
+            else if (p5) return `<q>『${p5.slice(1, -1)}』</q>`;
+            else if (p6) return `<q>＂${p6.slice(1, -1)}＂</q>`;
+            else return match;
+        });
+        const markdownHtml = converter.makeHtml(mes);
         summaryHtml = DOMPurify ? DOMPurify.sanitize(markdownHtml) : markdownHtml;
     } else {
         summaryHtml = escapeHtml(summary).replace(/\n/g, '<br>');
