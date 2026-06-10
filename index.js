@@ -3,7 +3,7 @@ const MODULE_NAME = 'ChatRecap';
 const CHAT_CHANGE_DELAY_MS = 100;
 const INITIAL_CHECK_DELAY_MS = 500;
 const MAX_HISTORY_MESSAGES = 2000;
-const MAX_HISTORY_CHARS = 200000;
+const MAX_HISTORY_CHARS = 200000; // Intentionally higher; covers long RP sessions
 
 const defaultSettings = Object.freeze({
     thresholdHours: 24,
@@ -174,9 +174,8 @@ async function generateRecap(history) {
             );
             log('ConnectionManager response type:', typeof response, '| has content:', !!response?.content, '| has reasoning:', !!response?.reasoning);
             const content = response?.content || '';
-            const reasoning = response?.reasoning || '';
             // Only accept clean text output; never expose raw reasoning chains
-            if (!content?.trim() && reasoning?.trim()) {
+            if (!content?.trim() && response?.reasoning?.trim()) {
                 log('WARNING: content is empty but reasoning is present. Disable "Request Model Reasoning" in SillyTavern for clean recaps.');
                 return null;
             }
@@ -209,7 +208,7 @@ async function showRecap(summary, timeAwayText) {
     const { translate } = i18nModule || {};
     const title = translate ? translate('Where you left off', 'CR_Popup_Title') : 'Where you left off';
     const lastSeen = timeAwayText && translate
-        ? translate('Last seen ${0}', 'CR_Popup_LastSeen').replace(/\$\{0\}/g, timeAwayText)
+        ? translate('Last seen ${0}', 'CR_Popup_LastSeen').replace(/\$\{0\}/g, escapeHtml(timeAwayText))
         : (timeAwayText ? `Last seen ${escapeHtml(timeAwayText)}` : '');
     const { converter } = scriptModule || {};
     let summaryHtml;
@@ -226,7 +225,7 @@ async function showRecap(summary, timeAwayText) {
             else return match;
         });
         const markdownHtml = converter.makeHtml(mes);
-        summaryHtml = DOMPurify ? DOMPurify.sanitize(markdownHtml) : markdownHtml;
+        summaryHtml = DOMPurify ? DOMPurify.sanitize(markdownHtml) : escapeHtml(summary).replace(/\n/g, '<br>');
     } else {
         summaryHtml = escapeHtml(summary).replace(/\n/g, '<br>');
     }
@@ -316,7 +315,7 @@ async function checkAndShowRecap(force = false) {
     }
 }
 
-function onChatChanged(eventData) {
+function onChatChanged(_eventData) {
     try {
         const { getCurrentChatId } = scriptModule;
         const currentChatId = getCurrentChatId?.() || null;
