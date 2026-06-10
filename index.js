@@ -310,9 +310,9 @@ function initSettings() {
                             </div>
                         </div>
                         <div class="chat-recap-setting-row">
-                            <label for="chatrecap_show_time" class="checkbox_label" data-i18n="CR_Settings_ShowTimeAway">
+                            <label for="chatrecap_show_time" class="checkbox_label">
                                 <input id="chatrecap_show_time" type="checkbox" ${s.showTimeAway ? 'checked' : ''}>
-                                Show Time Away Label
+                                <span data-i18n="CR_Settings_ShowTimeAway">Show Time Away Label</span>
                             </label>
                         </div>
                         <hr>
