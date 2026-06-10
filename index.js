@@ -3,6 +3,7 @@ const MODULE_NAME = 'ChatRecap';
 const CHAT_CHANGE_DELAY_MS = 100;
 const INITIAL_CHECK_DELAY_MS = 500;
 const MAX_HISTORY_MESSAGES = 2000;
+const MAX_HISTORY_CHARS = 50000;
 
 const defaultSettings = Object.freeze({
     thresholdHours: 24,
@@ -116,7 +117,19 @@ function formatTimeAway(timestamp) {
         return _t(h === 1 ? 'CR_Time_HourAgo' : 'CR_Time_HoursAgo', h === 1 ? '{0} hour ago' : '{0} hours ago').replace('{0}', h);
     }
     const days = Math.round(hours / 24);
-    return _t(days === 1 ? 'CR_Time_DayAgo' : 'CR_Time_DaysAgo', days === 1 ? '{0} day ago' : '{0} days ago').replace('{0}', days);
+    if (days < 7) {
+        return _t(days === 1 ? 'CR_Time_DayAgo' : 'CR_Time_DaysAgo', days === 1 ? '{0} day ago' : '{0} days ago').replace('{0}', days);
+    }
+    const weeks = Math.round(days / 7);
+    if (weeks < 5) {
+        return _t(weeks === 1 ? 'CR_Time_WeekAgo' : 'CR_Time_WeeksAgo', weeks === 1 ? '{0} week ago' : '{0} weeks ago').replace('{0}', weeks);
+    }
+    const months = Math.round(days / 30);
+    if (months < 12) {
+        return _t(months === 1 ? 'CR_Time_MonthAgo' : 'CR_Time_MonthsAgo', months === 1 ? '{0} month ago' : '{0} months ago').replace('{0}', months);
+    }
+    const years = Math.round(days / 365);
+    return _t(years === 1 ? 'CR_Time_YearAgo' : 'CR_Time_YearsAgo', years === 1 ? '{0} year ago' : '{0} years ago').replace('{0}', years);
 }
 
 function buildChatHistory() {
@@ -125,13 +138,17 @@ function buildChatHistory() {
     if (!ctx?.chat?.length) return '';
     const msgs = ctx.chat.filter(m => !m.is_system);
     const slice = msgs.length > MAX_HISTORY_MESSAGES ? msgs.slice(-MAX_HISTORY_MESSAGES) : msgs;
-    return slice.map(m => `${m.is_user ? (ctx.name1 || 'User') : (m.name || 'Character')}: ${m.mes || ''}`).join('\n\n');
+    let history = slice.map(m => `${m.is_user ? (ctx.name1 || 'User') : (m.name || 'Character')}: ${m.mes || ''}`).join('\n\n');
+    if (history.length > MAX_HISTORY_CHARS) {
+        log(`History trimmed from ${history.length} to ${MAX_HISTORY_CHARS} chars`);
+        history = history.slice(-MAX_HISTORY_CHARS);
+    }
+    return history;
 }
 
 async function generateRecap(history) {
     const s = getSettings();
     const prompt = s.promptTemplate.replace('{{messages}}', history);
-    isGenerating = true;
     try {
         // If user selected a connection profile, use ConnectionManagerRequestService
         if (s.connectionProfile && connectionManagerService) {
@@ -171,8 +188,6 @@ async function generateRecap(history) {
     } catch (e) {
         log('Generation failed:', e);
         return null;
-    } finally {
-        isGenerating = false;
     }
 }
 
@@ -217,12 +232,13 @@ async function showRecap(summary, timeAwayText) {
 async function checkAndShowRecap(force = false) {
     try {
         if (isGenerating) { log('Already generating, skipping'); return; }
+        isGenerating = true;
         const { getContext } = extensionsModule;
         const { getCurrentChatId } = scriptModule;
         const ctx = getContext();
-        if (!ctx?.chat?.length) { log('Chat not loaded, skipping'); return; }
+        if (!ctx?.chat?.length) { log('Chat not loaded, skipping'); isGenerating = false; return; }
         const chatKey = getCurrentChatId?.() || null;
-        if (!chatKey) { log('No chat key, skipping'); return; }
+        if (!chatKey) { log('No chat key, skipping'); isGenerating = false; return; }
 
         const lastMessageTime = getLastMessageTime(ctx);
 
@@ -233,6 +249,7 @@ async function checkAndShowRecap(force = false) {
         // If no messages yet, skip
         if (!lastMessageTime && !force) {
             log('No messages yet, skipping');
+            isGenerating = false;
             return;
         }
 
@@ -242,6 +259,7 @@ async function checkAndShowRecap(force = false) {
         // Skip if not enough time has passed since last message
         if (!force && hoursSinceMessage < s.thresholdHours) {
             log(`${hoursSinceMessage.toFixed(1)}h since last message < ${s.thresholdHours}h threshold, skipping`);
+            isGenerating = false;
             return;
         }
 
@@ -250,11 +268,12 @@ async function checkAndShowRecap(force = false) {
         log('History length:', history.length, 'chars');
         if (!history.trim()) {
             log('No history available');
+            isGenerating = false;
             return;
         }
 
         const summary = await generateRecap(history);
-        if (getCurrentChatId?.() !== chatKey) { log('Chat changed, discarding'); return; }
+        if (getCurrentChatId?.() !== chatKey) { log('Chat changed, discarding'); isGenerating = false; return; }
         if (summary) {
             log('Got summary, showing popup');
             await showRecap(summary, s.showTimeAway ? formatTimeAway(lastMessageTime) : '');
@@ -264,6 +283,7 @@ async function checkAndShowRecap(force = false) {
 
     } catch (e) {
         log('Error in checkAndShowRecap:', e);
+    } finally {
         isGenerating = false;
     }
 }
@@ -314,11 +334,11 @@ function initSettings() {
                         <div class="chat-recap-setting-row chat-recap-setting-row-inline">
                             <div class="chat-recap-inline-group">
                                 <label for="chatrecap_threshold" data-i18n="CR_Settings_TimeThreshold">Time Threshold (hours)</label>
-                                <input id="chatrecap_threshold" type="number" class="neo-range-input" min="0" step="1" value="${s.thresholdHours}">
+                                <input id="chatrecap_threshold" type="number" class="neo-range-input" min="0" step="1" value="${escapeHtml(s.thresholdHours)}">
                             </div>
                             <div class="chat-recap-inline-group">
                                 <label for="chatrecap_max_tokens" data-i18n="CR_Settings_MaxTokens">Max Response Tokens</label>
-                                <input id="chatrecap_max_tokens" type="number" class="neo-range-input" min="1" step="1" value="${s.maxTokens}">
+                                <input id="chatrecap_max_tokens" type="number" class="neo-range-input" min="1" step="1" value="${escapeHtml(s.maxTokens)}">
                             </div>
                         </div>
                         <div class="chat-recap-setting-row">
@@ -334,7 +354,7 @@ function initSettings() {
                                 <span class="fa-solid fa-circle-info opacity50p" data-i18n="[title]CR_Tooltip_Placeholder" title="Use {{messages}} as placeholder for chat history"></span>
                                 <div class="editor_maximize fa-solid fa-maximize right_menu_button interactable" data-for="chatrecap_template" title="Maximize"></div>
                             </div>
-                            <textarea id="chatrecap_template" class="text_pole textarea_compact wide100p" rows="4" data-i18n="[placeholder]CR_Textarea_Placeholder" placeholder="e.g., Summarize the key events, character development, and emotional moments...">${s.promptTemplate}</textarea>
+                            <textarea id="chatrecap_template" class="text_pole textarea_compact wide100p" rows="4" data-i18n="[placeholder]CR_Textarea_Placeholder" placeholder="e.g., Summarize the key events, character development, and emotional moments...">${escapeHtml(s.promptTemplate)}</textarea>
                         </div>
                         <div class="chat-recap-setting-row">
                             <button id="chatrecap_test" class="menu_button" style="width:100%" data-i18n="CR_Settings_TestRecap">Test Recap Now</button>
@@ -383,14 +403,14 @@ function initSettings() {
     if (thresholdInput) {
         thresholdInput.addEventListener('change', () => {
             const val = parseFloat(thresholdInput.value);
-            s.thresholdHours = Number.isFinite(val) && val > 0 ? val : s.thresholdHours;
+            s.thresholdHours = Number.isFinite(val) && val > 0 ? Math.min(val, 8760) : s.thresholdHours;
             saveSettings();
         });
     }
     if (tokensInput) {
         tokensInput.addEventListener('change', () => {
             const val = parseInt(tokensInput.value, 10);
-            s.maxTokens = Number.isFinite(val) && val > 0 ? val : s.maxTokens;
+            s.maxTokens = Number.isFinite(val) && val > 0 ? Math.min(val, 4096) : s.maxTokens;
             saveSettings();
         });
     }
@@ -408,21 +428,10 @@ function initSettings() {
     }
 
     log('Settings UI initialized');
-
-    // Expose debug helper
-    window.chatRecapDebug = async function() {
-        const { getContext } = extensionsModule;
-        const s = getSettings();
-        log('=== DEBUG ===');
-        log('Settings:', JSON.stringify(s));
-        log('Chat length:', getContext()?.chat?.length || 0);
-        log('Last message time:', getLastMessageTime(getContext()));
-        log('=============');
-    };
 }
 
 export async function init() {
-    log('Initializing v1.3.8');
+    log('Initializing v1.3.9');
     await initModules();
     initSettings();
     const { eventSource, event_types } = scriptModule;
