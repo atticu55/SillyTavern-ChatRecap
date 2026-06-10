@@ -11,10 +11,16 @@
     "CR_Tooltip_Placeholder": "Use {{messages}} as placeholder for chat history",
     "CR_Textarea_Placeholder": "e.g., Summarize the key events, character development, and emotional moments...",
     "CR_Time_JustNow": "just now",
+    "CR_Time_MinuteAgo": "{0} minute ago",
     "CR_Time_MinutesAgo": "{0} minutes ago",
+    "CR_Time_HourAgo": "{0} hour ago",
     "CR_Time_HoursAgo": "{0} hours ago",
+    "CR_Time_DayAgo": "{0} day ago",
     "CR_Time_DaysAgo": "{0} days ago",
+    "CR_Time_WeekAgo": "{0} week ago",
     "CR_Time_WeeksAgo": "{0} weeks ago",
+    "CR_Time_MonthAgo": "{0} month ago",
     "CR_Time_MonthsAgo": "{0} months ago",
+    "CR_Time_YearAgo": "{0} year ago",
     "CR_Time_YearsAgo": "{0} years ago"
 }

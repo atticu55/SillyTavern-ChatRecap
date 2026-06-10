@@ -102,14 +102,14 @@ function formatTimeAway(timestamp) {
     };
     if (hours < 1) {
         const mins = Math.round(hours * 60);
-        return _t('CR_Time_MinutesAgo', '{0} minutes ago').replace('{0}', mins);
+        return _t(mins === 1 ? 'CR_Time_MinuteAgo' : 'CR_Time_MinutesAgo', mins === 1 ? '{0} minute ago' : '{0} minutes ago').replace('{0}', mins);
     }
     if (hours < 24) {
         const h = Math.round(hours);
-        return _t('CR_Time_HoursAgo', '{0} hours ago').replace('{0}', h);
+        return _t(h === 1 ? 'CR_Time_HourAgo' : 'CR_Time_HoursAgo', h === 1 ? '{0} hour ago' : '{0} hours ago').replace('{0}', h);
     }
     const days = Math.round(hours / 24);
-    return _t('CR_Time_DaysAgo', '{0} days ago').replace('{0}', days);
+    return _t(days === 1 ? 'CR_Time_DayAgo' : 'CR_Time_DaysAgo', days === 1 ? '{0} day ago' : '{0} days ago').replace('{0}', days);
 }
 
 function buildChatHistory() {
