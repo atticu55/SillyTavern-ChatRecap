@@ -3,7 +3,7 @@ const MODULE_NAME = 'ChatRecap';
 const CHAT_CHANGE_DELAY_MS = 100;
 const INITIAL_CHECK_DELAY_MS = 500;
 const MAX_HISTORY_MESSAGES = 2000;
-const MAX_HISTORY_CHARS = 50000;
+const MAX_HISTORY_CHARS = 200000;
 
 const defaultSettings = Object.freeze({
     thresholdHours: 24,
