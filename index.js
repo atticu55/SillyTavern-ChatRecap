@@ -98,12 +98,11 @@ function getLastMessageTime(ctx) {
 function formatTimeAway(timestamp) {
     if (!timestamp || typeof timestamp !== 'number') return '';
     const hours = (Date.now() - timestamp) / (1000 * 60 * 60);
-    const t = window.SillyTavern?.getContext()?.t;
+    const { translate } = i18nModule || {};
     const _t = (key, val) => {
-        if (!t) return val;
+        if (!translate) return val;
         try {
-            const translated = t[key] || val;
-            return translated;
+            return translate(val, key);
         } catch (_e) {
             return val;
         }
