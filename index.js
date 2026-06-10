@@ -174,10 +174,16 @@ async function generateRecap(history) {
             );
             log('ConnectionManager response type:', typeof response, '| has content:', !!response?.content, '| has reasoning:', !!response?.reasoning);
             const content = response?.content || '';
-            // Only accept clean text output; never expose raw reasoning chains
-            if (!content?.trim() && response?.reasoning?.trim()) {
-                log('WARNING: content is empty but reasoning is present. Disable "Request Model Reasoning" in SillyTavern for clean recaps.');
-                return null;
+            const reasoning = response?.reasoning || '';
+            // If content is empty but reasoning is present, use reasoning as fallback
+            if (!content?.trim() && reasoning?.trim()) {
+                log('WARNING: content is empty but reasoning is present. Using reasoning as fallback.');
+                if (typeof toastr !== 'undefined') {
+                    toastr.info('Reasoning output used as summary. Disable "Request Model Reasoning" in your preset for cleaner recaps.', 'ChatRecap');
+                }
+                const result = reasoning.trim();
+                log('Reasoning length:', reasoning.length, '| Final:', result.length + ' chars');
+                return result;
             }
             const result = content?.trim() || null;
             log('Content length:', content?.length || 0, '| Final:', result === null ? 'null' : result.length + ' chars');
@@ -305,11 +311,16 @@ async function checkAndShowRecap(force = false) {
             log('Got summary, showing popup');
             await showRecap(summary, s.showTimeAway ? formatTimeAway(lastMessageTime) : '');
         } else {
-            log('No summary returned from LLM');
+            if (typeof toastr !== 'undefined') {
+                toastr.error('No summary returned from LLM. Check your connection profile and preset settings.', 'ChatRecap');
+            }
         }
 
     } catch (e) {
         log('Error in checkAndShowRecap:', e);
+        if (typeof toastr !== 'undefined') {
+            toastr.error('Failed to generate recap. Check console for details.', 'ChatRecap');
+        }
     } finally {
         isGenerating = false;
     }
@@ -405,9 +416,17 @@ function initSettings() {
     const templateArea = settingsEl.querySelector('#chatrecap_template');
 
     if (testBtn) {
-        testBtn.addEventListener('click', () => {
+        testBtn.addEventListener('click', async () => {
             log('Manual test triggered');
-            checkAndShowRecap(true);
+            const originalText = testBtn.textContent || 'Test Recap Now';
+            testBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ' + originalText;
+            testBtn.disabled = true;
+            try {
+                await checkAndShowRecap(true);
+            } finally {
+                testBtn.textContent = originalText;
+                testBtn.disabled = false;
+            }
         });
     }
 
