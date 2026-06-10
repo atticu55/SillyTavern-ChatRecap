@@ -37,6 +37,11 @@
     color: var(--SmartThemeQuoteColor);
 }
 
+.recap-body q:before,
+.recap-body q:after {
+    content: '';
+}
+
 .recap-body q i,
 .recap-body q em {
     color: inherit;
