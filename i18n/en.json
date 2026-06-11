@@ -4,8 +4,6 @@
     "CR_Settings_TimeThreshold": "Time Threshold (hours)",
     "CR_Settings_MaxTokens": "Max Response Tokens",
     "CR_Settings_ShowTimeAway": "Show Time Away Label",
-    "CR_Settings_SystemPrompt": "System Prompt",
-    "CR_SystemPrompt_Placeholder": "e.g., You are a concise summarizer...",
     "CR_Settings_PromptTemplate": "Prompt Template",
     "CR_Settings_TestRecap": "Test Recap Now",
     "CR_Popup_Title": "Where you left off",

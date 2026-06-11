@@ -8,7 +8,6 @@ const MAX_HISTORY_CHARS = 200000; // Intentionally higher; covers long RP sessio
 const defaultSettings = Object.freeze({
     thresholdHours: 24,
     maxTokens: 256,
-    systemPrompt: 'You are a concise summarizer. Focus on key events, character development, and emotional moments. Follow the user\'s instructions for length and style.',
     promptTemplate: 'Summarize what has happened in this conversation so far. Keep it brief but include key events, decisions, and emotional beats.\n\n{{messages}}',
     showTimeAway: true,
     connectionProfile: '',
@@ -165,7 +164,6 @@ async function generateRecap(history) {
         if (s.connectionProfile && connectionManagerService) {
             log('Using connection profile:', s.connectionProfile);
             const messages = [
-                { role: 'system', content: s.systemPrompt },,
                 { role: 'user', content: prompt }
             ];
             const response = await connectionManagerService.sendRequest(
@@ -201,7 +199,7 @@ async function generateRecap(history) {
         // Fallback to generateRaw if no profile selected
         const { generateRaw } = scriptModule;
         if (typeof generateRaw === 'function') {
-            const text = await generateRaw({ prompt, systemPrompt: s.systemPrompt, responseLength: s.maxTokens, quietToLoud: false });
+            const text = await generateRaw({ prompt, responseLength: s.maxTokens, quietToLoud: false });
             return text?.trim() || null;
         }
 
@@ -483,10 +481,6 @@ function initSettings() {
                         </div>
                         <hr>
                         <div class="chat-recap-setting-row">
-                            <label for="chatrecap_system_prompt" data-i18n="CR_Settings_SystemPrompt">System Prompt</label>
-                            <textarea id="chatrecap_system_prompt" class="text_pole textarea_compact wide100p" rows="2" data-i18n="[placeholder]CR_SystemPrompt_Placeholder" placeholder="e.g., You are a concise summarizer...">${escapeHtml(s.systemPrompt)}</textarea>
-                        </div>
-                        <div class="chat-recap-setting-row">
                             <div class="flex-container alignitemscenter wide100p gap5px">
                                 <label data-i18n="CR_Settings_PromptTemplate">Prompt Template</label>
                                 <span class="fa-solid fa-circle-info opacity50p" data-i18n="[title]CR_Tooltip_Placeholder" title="Use {{messages}} as placeholder for chat history"></span>
@@ -513,7 +507,6 @@ function initSettings() {
     const thresholdInput = settingsEl.querySelector('#chatrecap_threshold');
     const tokensInput = settingsEl.querySelector('#chatrecap_max_tokens');
     const showTimeCheck = settingsEl.querySelector('#chatrecap_show_time');
-    const systemPromptArea = settingsEl.querySelector('#chatrecap_system_prompt');
     const templateArea = settingsEl.querySelector('#chatrecap_template');
 
     if (testBtn) {
@@ -564,12 +557,6 @@ function initSettings() {
     if (showTimeCheck) {
         showTimeCheck.addEventListener('change', () => {
             s.showTimeAway = showTimeCheck.checked;
-            saveSettings();
-        });
-    }
-    if (systemPromptArea) {
-        systemPromptArea.addEventListener('blur', () => {
-            s.systemPrompt = systemPromptArea.value;
             saveSettings();
         });
     }
