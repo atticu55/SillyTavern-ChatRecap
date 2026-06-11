@@ -248,7 +248,7 @@ async function showRecap(summary, timeAwayText) {
             <hr class="recap-divider">
             ${lastSeen ? `<div class="recap-time">${lastSeen}</div>` : ''}
             <div class="recap-body"><div class="mes_text">${summaryHtml}</div></div>
-            <button class="recap-close-button menu_button" data-i18n="CR_Popup_Close">Close Summary</button>
+            <button class="recap-close-button menu_button" data-i18n="CR_Popup_Close">Close</button>
         </div>`;
     const popup = new Popup(html, POPUP_TYPE.DISPLAY, null, {
         wide: true,
@@ -295,7 +295,7 @@ function showPlaceholder(timeAwayText) {
                 <div class="recap-placeholder-text">${escapeHtml(generatingText)}</div>
                 <div class="recap-placeholder-sub">${escapeHtml(subText)}</div>
             </div>
-            <button class="recap-close-button menu_button" data-i18n="CR_Popup_ClosePlaceholder">Close</button>
+            <button class="recap-close-button menu_button" data-i18n="CR_Popup_Close">Close</button>
         </div>`;
     
     const popup = new Popup(html, POPUP_TYPE.DISPLAY, null, {

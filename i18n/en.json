@@ -7,7 +7,7 @@
     "CR_Settings_PromptTemplate": "Prompt Template",
     "CR_Settings_TestRecap": "Test Recap Now",
     "CR_Popup_Title": "Where you left off",
-    "CR_Popup_Close": "Close Summary",
+    "CR_Popup_Close": "Close",
     "CR_Popup_LastSeen": "Last seen ${0}",
     "CR_Tooltip_Placeholder": "Use {{messages}} as placeholder for chat history",
     "CR_Textarea_Placeholder": "e.g., Summarize the key events, character development, and emotional moments...",
@@ -24,6 +24,5 @@
     "CR_Time_YearAgo": "{0} year ago",
     "CR_Time_YearsAgo": "{0} years ago",
     "CR_Popup_Generating": "Generating summary...",
-    "CR_Popup_GeneratingSub": "This may take a moment depending on your endpoint",
-    "CR_Popup_ClosePlaceholder": "Close"
+    "CR_Popup_GeneratingSub": "This may take a moment depending on your endpoint"
 }

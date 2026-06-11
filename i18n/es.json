@@ -7,7 +7,7 @@
     "CR_Settings_PromptTemplate": "Plantilla de Prompt",
     "CR_Settings_TestRecap": "Probar Resumen Ahora",
     "CR_Popup_Title": "Donde lo dejaste",
-    "CR_Popup_Close": "Cerrar Resumen",
+    "CR_Popup_Close": "Cerrar",
     "CR_Popup_LastSeen": "Visto por última vez ${0}",
     "CR_Tooltip_Placeholder": "Usa {{messages}} como marcador de posición para el historial del chat",
     "CR_Textarea_Placeholder": "ej., Resume los eventos clave, el desarrollo del personaje y los momentos emocionales...",
@@ -24,6 +24,5 @@
     "CR_Time_YearAgo": "hace {0} año",
     "CR_Time_YearsAgo": "hace {0} años",
     "CR_Popup_Generating": "Generando resumen...",
-    "CR_Popup_GeneratingSub": "Esto puede tardar un momento dependiendo de tu endpoint",
-    "CR_Popup_ClosePlaceholder": "Cerrar"
+    "CR_Popup_GeneratingSub": "Esto puede tardar un momento dependiendo de tu endpoint"
 }
