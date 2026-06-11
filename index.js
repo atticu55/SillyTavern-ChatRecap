@@ -7,7 +7,6 @@ const MAX_HISTORY_CHARS = 200000; // Intentionally higher; covers long RP sessio
 
 const defaultSettings = Object.freeze({
     thresholdHours: 24,
-    maxTokens: 256,
     promptTemplate: 'Summarize what has happened in this conversation so far. Keep it brief but include key events, decisions, and emotional beats.\n\n{{messages}}',
     showTimeAway: true,
     connectionProfile: '',
@@ -169,7 +168,7 @@ async function generateRecap(history) {
             const response = await connectionManagerService.sendRequest(
                 s.connectionProfile,
                 messages,
-                s.maxTokens,
+                undefined, // Let connection profile control max tokens
                 { extractData: true, stream: false }
             );
             log('ConnectionManager response type:', typeof response, '| has content:', !!response?.content, '| has reasoning:', !!response?.reasoning);
@@ -199,7 +198,7 @@ async function generateRecap(history) {
         // Fallback to generateRaw if no profile selected
         const { generateRaw } = scriptModule;
         if (typeof generateRaw === 'function') {
-            const text = await generateRaw({ prompt, responseLength: s.maxTokens, quietToLoud: false });
+            const text = await generateRaw({ prompt, quietToLoud: false });
             return text?.trim() || null;
         }
 
@@ -468,10 +467,6 @@ function initSettings() {
                                 <label for="chatrecap_threshold" data-i18n="CR_Settings_TimeThreshold">Time Threshold (hours)</label>
                                 <input id="chatrecap_threshold" type="number" class="neo-range-input" min="0" step="1" value="${escapeHtml(s.thresholdHours)}">
                             </div>
-                            <div class="chat-recap-inline-group">
-                                <label for="chatrecap_max_tokens" data-i18n="CR_Settings_MaxTokens">Max Response Tokens</label>
-                                <input id="chatrecap_max_tokens" type="number" class="neo-range-input" min="1" step="1" value="${escapeHtml(s.maxTokens)}">
-                            </div>
                         </div>
                         <div class="chat-recap-setting-row">
                             <label for="chatrecap_show_time" class="checkbox_label">
@@ -505,7 +500,6 @@ function initSettings() {
     const testBtn = settingsEl.querySelector('#chatrecap_test');
     const profileSelect = settingsEl.querySelector('#chatrecap_connection_profile');
     const thresholdInput = settingsEl.querySelector('#chatrecap_threshold');
-    const tokensInput = settingsEl.querySelector('#chatrecap_max_tokens');
     const showTimeCheck = settingsEl.querySelector('#chatrecap_show_time');
     const templateArea = settingsEl.querySelector('#chatrecap_template');
 
@@ -544,13 +538,6 @@ function initSettings() {
         thresholdInput.addEventListener('change', () => {
             const val = parseFloat(thresholdInput.value);
             s.thresholdHours = Number.isFinite(val) && val > 0 ? Math.min(val, 8760) : s.thresholdHours;
-            saveSettings();
-        });
-    }
-    if (tokensInput) {
-        tokensInput.addEventListener('change', () => {
-            const val = parseInt(tokensInput.value, 10);
-            s.maxTokens = Number.isFinite(val) && val > 0 ? Math.min(val, 4096) : s.maxTokens;
             saveSettings();
         });
     }

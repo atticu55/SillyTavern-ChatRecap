@@ -2,7 +2,6 @@
     "CR_Settings_ConnectionProfile": "Perfil de Conexión",
     "CR_Settings_DefaultConnection": "Usar Conexión Predeterminada",
     "CR_Settings_TimeThreshold": "Tiempo Mínimo (horas)",
-    "CR_Settings_MaxTokens": "Tokens Máximos por Respuesta",
     "CR_Settings_ShowTimeAway": "Mostrar tiempo ausente",
     "CR_Settings_PromptTemplate": "Plantilla de Prompt",
     "CR_Settings_TestRecap": "Probar Resumen Ahora",
