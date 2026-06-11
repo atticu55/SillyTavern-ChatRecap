@@ -16,6 +16,7 @@ const defaultSettings = Object.freeze({
 let isGenerating = false;
 let currentPopup = null;
 let lastRecapShownChatId = null;
+let pendingGeneration = null;
 let scriptModule = null;
 let extensionsModule = null;
 let popupModule = null;
@@ -174,7 +175,13 @@ async function generateRecap(history) {
             );
             log('ConnectionManager response type:', typeof response, '| has content:', !!response?.content, '| has reasoning:', !!response?.reasoning);
             const content = response?.content || '';
-            const reasoning = response?.reasoning || '';
+            let reasoning = response?.reasoning || '';
+            // Defensive: reasoning may be an object or non-string in some APIs
+            if (typeof reasoning !== 'string') {
+                log('Reasoning is not a string, type:', typeof reasoning, '| value:', JSON.stringify(reasoning).substring(0, 200));
+                reasoning = String(reasoning || '');
+            }
+            log('Content length:', content?.length || 0, '| Reasoning length:', reasoning?.length || 0);
             // If content is empty but reasoning is present, use reasoning as fallback
             if (!content?.trim() && reasoning?.trim()) {
                 log('WARNING: content is empty but reasoning is present. Using reasoning as fallback.');
@@ -182,11 +189,11 @@ async function generateRecap(history) {
                     toastr.info('Reasoning output used as summary. Disable "Request Model Reasoning" in your preset for cleaner recaps.', 'ChatRecap');
                 }
                 const result = reasoning.trim();
-                log('Reasoning length:', reasoning.length, '| Final:', result.length + ' chars');
+                log('Final result length:', result.length, 'chars');
                 return result;
             }
             const result = content?.trim() || null;
-            log('Content length:', content?.length || 0, '| Final:', result === null ? 'null' : result.length + ' chars');
+            log('Final result:', result === null ? 'null' : result.length + ' chars');
             return result;
         }
 
@@ -262,6 +269,59 @@ async function showRecap(summary, timeAwayText) {
     popup.show().then(() => { currentPopup = null; }).catch(e => { log('Popup error:', e); currentPopup = null; });
 }
 
+function showPlaceholder(timeAwayText) {
+    if (currentPopup) {
+        try { currentPopup.completeCancelled(); } catch (_e) {}
+        currentPopup = null;
+    }
+    const { POPUP_TYPE, Popup } = popupModule;
+    const { translate } = i18nModule || {};
+    const title = translate ? translate('Where you left off', 'CR_Popup_Title') : 'Where you left off';
+    const lastSeen = timeAwayText && translate
+        ? translate('Last seen ${0}', 'CR_Popup_LastSeen').replace(/\$\{0\}/g, escapeHtml(timeAwayText))
+        : (timeAwayText ? `Last seen ${escapeHtml(timeAwayText)}` : '');
+    const generatingText = translate ? translate('Generating summary...', 'CR_Popup_Generating') : 'Generating summary...';
+    const subText = translate ? translate('This may take a moment depending on your endpoint', 'CR_Popup_GeneratingSub') : 'This may take a moment depending on your endpoint';
+    
+    const html = `
+        <div class="chat-recap-container">
+            <h2 class="recap-title">${escapeHtml(title)}</h2>
+            <hr class="recap-divider">
+            ${lastSeen ? `<div class="recap-time">${lastSeen}</div>` : ''}
+            <div class="recap-body recap-placeholder" role="status" aria-label="Loading summary">
+                <div class="recap-spinner">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i>
+                </div>
+                <div class="recap-placeholder-text">${escapeHtml(generatingText)}</div>
+                <div class="recap-placeholder-sub">${escapeHtml(subText)}</div>
+            </div>
+            <button class="recap-close-button menu_button" data-i18n="CR_Popup_Close">Close</button>
+        </div>`;
+    
+    const popup = new Popup(html, POPUP_TYPE.DISPLAY, null, {
+        wide: true,
+        allowVerticalScrolling: true,
+        animation: 'slow',
+        onOpen: (dlg) => {
+            const xBtn = dlg.dlg?.querySelector('.popup-button-close');
+            if (xBtn) xBtn.style.display = 'none';
+            const btn = dlg.content.querySelector('.recap-close-button');
+            if (btn) btn.addEventListener('click', () => dlg.completeCancelled());
+        },
+    });
+    
+    currentPopup = popup;
+    pendingGeneration = popup;
+    popup.show().then(() => { 
+        if (currentPopup === popup) currentPopup = null;
+        pendingGeneration = null;
+    }).catch(e => { 
+        log('Placeholder popup error:', e); 
+        if (currentPopup === popup) currentPopup = null;
+        pendingGeneration = null;
+    });
+}
+
 async function checkAndShowRecap(force = false) {
     try {
         if (isGenerating) { log('Already generating, skipping'); return; }
@@ -305,12 +365,39 @@ async function checkAndShowRecap(force = false) {
             return;
         }
 
+        // Show placeholder immediately so user knows what's happening
+        const timeAway = s.showTimeAway ? formatTimeAway(lastMessageTime) : '';
+        showPlaceholder(timeAway);
+
         const summary = await generateRecap(history);
-        if (getCurrentChatId?.() !== chatKey) { log('Chat changed, discarding'); isGenerating = false; return; }
+        
+        if (getCurrentChatId?.() !== chatKey) { 
+            log('Chat changed, discarding'); 
+            isGenerating = false; 
+            return; 
+        }
+        
+        // If user closed the placeholder, discard the summary
+        if (!pendingGeneration) {
+            log('Popup was cancelled, discarding summary');
+            isGenerating = false;
+            return;
+        }
+        
         if (summary) {
             log('Got summary, showing popup');
-            await showRecap(summary, s.showTimeAway ? formatTimeAway(lastMessageTime) : '');
+            // Close placeholder before showing real summary
+            if (currentPopup && currentPopup === pendingGeneration) {
+                try { currentPopup.completeCancelled(); } catch (_e) {}
+                currentPopup = null;
+            }
+            await showRecap(summary, timeAway);
         } else {
+            // Generation returned empty
+            if (currentPopup && currentPopup === pendingGeneration) {
+                try { currentPopup.completeCancelled(); } catch (_e) {}
+                currentPopup = null;
+            }
             if (typeof toastr !== 'undefined') {
                 toastr.error('No summary returned from LLM. Check your connection profile and preset settings.', 'ChatRecap');
             }
@@ -321,8 +408,14 @@ async function checkAndShowRecap(force = false) {
         if (typeof toastr !== 'undefined') {
             toastr.error('Failed to generate recap. Check console for details.', 'ChatRecap');
         }
+        // Close placeholder on error
+        if (currentPopup && currentPopup === pendingGeneration) {
+            try { currentPopup.completeCancelled(); } catch (_e) {}
+            currentPopup = null;
+        }
     } finally {
         isGenerating = false;
+        pendingGeneration = null;
     }
 }
 
@@ -338,10 +431,12 @@ function onChatChanged(_eventData) {
         if (isGenerating) log('Generation aborted - chat changed');
         if (currentPopup) { try { currentPopup.completeCancelled(); } catch (_e) {} currentPopup = null; }
         isGenerating = false;
+        pendingGeneration = null;
         setTimeout(() => checkAndShowRecap(), CHAT_CHANGE_DELAY_MS);
     } catch (e) {
         log('Error in onChatChanged:', e);
         isGenerating = false;
+        pendingGeneration = null;
     }
 }
 
