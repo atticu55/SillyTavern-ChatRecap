@@ -7,7 +7,7 @@ const MAX_HISTORY_CHARS = 200000; // Intentionally higher; covers long RP sessio
 
 const defaultSettings = Object.freeze({
     thresholdHours: 24,
-    promptTemplate: 'Summarize what has happened in this conversation so far. Keep it brief but include key events, decisions, and emotional beats.\n\n{{messages}}',
+    promptTemplate: 'You are a concise summarizer. Give a brief informal narrative summary of what happened in this chat for someone coming back after time away. Write as a flowing story — no bullet points or lists. Focus on key events, character development, and emotional moments.\n\n{{messages}}',
     showTimeAway: true,
     connectionProfile: '',
 });
