@@ -23,5 +23,7 @@
     "CR_Time_YearAgo": "hace {0} año",
     "CR_Time_YearsAgo": "hace {0} años",
     "CR_Popup_Generating": "Generando resumen...",
-    "CR_Popup_GeneratingSub": "Esto puede tardar un momento dependiendo de tu endpoint"
+    "CR_Popup_GeneratingSub": "Esto puede tardar un momento dependiendo de tu endpoint",
+    "CR_Warning_NoProfile": "Selecciona un perfil de conexión en los ajustes de ChatRecap para generar resúmenes.",
+    "CR_Warning_NoProfile_Title": "ChatRecap"
 }

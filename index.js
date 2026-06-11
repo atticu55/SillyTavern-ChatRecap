@@ -1,6 +1,6 @@
 const LOG_PREFIX = '[ChatRecap]';
 const MODULE_NAME = 'ChatRecap';
-const CHAT_CHANGE_DELAY_MS = 100;
+const CHAT_CHANGE_DELAY_MS = 300;
 const INITIAL_CHECK_DELAY_MS = 500;
 const MAX_HISTORY_MESSAGES = 2000;
 const MAX_HISTORY_CHARS = 200000; // Intentionally higher; covers long RP sessions
@@ -195,14 +195,13 @@ async function generateRecap(history) {
             return result;
         }
 
-        // Fallback to generateRaw if no profile selected
-        const { generateRaw } = scriptModule;
-        if (typeof generateRaw === 'function') {
-            const text = await generateRaw({ prompt, quietToLoud: false });
-            return text?.trim() || null;
+        const { translate } = i18nModule || {};
+        const msg = translate ? translate('Please select a connection profile in ChatRecap settings to generate recaps.', 'CR_Warning_NoProfile') : 'Please select a connection profile in ChatRecap settings to generate recaps.';
+        const title = translate ? translate('ChatRecap', 'CR_Warning_NoProfile_Title') : 'ChatRecap';
+        if (typeof toastr !== 'undefined') {
+            toastr.warning(msg, title);
         }
-
-        log('No generation API available');
+        log('No connection profile selected — cannot generate recap');
         return null;
     } catch (e) {
         log('Generation failed:', e);
@@ -558,7 +557,7 @@ function initSettings() {
 }
 
 export async function init() {
-    log('Initializing v1.3.9');
+    log('Initializing v1.4.0');
     await initModules();
     initSettings();
     const { eventSource, event_types } = scriptModule;
