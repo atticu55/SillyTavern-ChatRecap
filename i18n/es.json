@@ -1,6 +1,6 @@
 {
     "CR_Settings_ConnectionProfile": "Perfil de Conexión",
-    "CR_Settings_DefaultConnection": "Usar Conexión Predeterminada",
+    "CR_Settings_DefaultConnection": "Selecciona un perfil...",
     "CR_Settings_TimeThreshold": "Tiempo Mínimo (horas)",
     "CR_Settings_ShowTimeAway": "Mostrar tiempo ausente",
     "CR_Settings_PromptTemplate": "Plantilla de Prompt",

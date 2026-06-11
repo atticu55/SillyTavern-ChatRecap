@@ -457,7 +457,7 @@ function initSettings() {
                         <div class="chat-recap-setting-row">
                             <label for="chatrecap_connection_profile" data-i18n="CR_Settings_ConnectionProfile">Connection Profile</label>
                             <select id="chatrecap_connection_profile" class="text_pole">
-                                <option value="" data-i18n="CR_Settings_DefaultConnection">Use Default Connection</option>
+                                <option value="" data-i18n="CR_Settings_DefaultConnection">Select a profile...</option>
                             </select>
                         </div>
                         <hr>

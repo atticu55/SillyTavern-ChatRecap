@@ -1,6 +1,6 @@
 {
     "CR_Settings_ConnectionProfile": "Connection Profile",
-    "CR_Settings_DefaultConnection": "Use Default Connection",
+    "CR_Settings_DefaultConnection": "Select a profile...",
     "CR_Settings_TimeThreshold": "Time Threshold (hours)",
     "CR_Settings_ShowTimeAway": "Show Time Away Label",
     "CR_Settings_PromptTemplate": "Prompt Template",
