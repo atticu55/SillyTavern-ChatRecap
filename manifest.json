@@ -5,9 +5,9 @@
     "optional": [],
     "js": "index.js",
     "css": "style.css",
-    "author": "phampyk",
+    "author": "RavenRevenge",
     "version": "1.4.0",
-    "homePage": "https://github.com/atticu55/SillyTavern-ChatRecap",
+    "homePage": "https://github.com/ravenrevenge/SillyTavern-ChatRecap",
     "i18n": {
         "en": "i18n/en.json",
         "es-es": "i18n/es.json"
