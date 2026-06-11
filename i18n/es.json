@@ -4,6 +4,8 @@
     "CR_Settings_TimeThreshold": "Tiempo Mínimo (horas)",
     "CR_Settings_MaxTokens": "Tokens Máximos por Respuesta",
     "CR_Settings_ShowTimeAway": "Mostrar tiempo ausente",
+    "CR_Settings_SystemPrompt": "Prompt del Sistema",
+    "CR_SystemPrompt_Placeholder": "ej., Eres un resumidor conciso...",
     "CR_Settings_PromptTemplate": "Plantilla de Prompt",
     "CR_Settings_TestRecap": "Probar Resumen Ahora",
     "CR_Popup_Title": "Donde lo dejaste",
