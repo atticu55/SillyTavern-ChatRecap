@@ -295,7 +295,7 @@ function showPlaceholder(timeAwayText) {
                 <div class="recap-placeholder-text">${escapeHtml(generatingText)}</div>
                 <div class="recap-placeholder-sub">${escapeHtml(subText)}</div>
             </div>
-            <button class="recap-close-button menu_button" data-i18n="CR_Popup_Close">Close</button>
+            <button class="recap-close-button menu_button" data-i18n="CR_Popup_ClosePlaceholder">Close</button>
         </div>`;
     
     const popup = new Popup(html, POPUP_TYPE.DISPLAY, null, {

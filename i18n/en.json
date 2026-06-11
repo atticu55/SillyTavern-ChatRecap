@@ -22,5 +22,8 @@
     "CR_Time_MonthAgo": "{0} month ago",
     "CR_Time_MonthsAgo": "{0} months ago",
     "CR_Time_YearAgo": "{0} year ago",
-    "CR_Time_YearsAgo": "{0} years ago"
+    "CR_Time_YearsAgo": "{0} years ago",
+    "CR_Popup_Generating": "Generating summary...",
+    "CR_Popup_GeneratingSub": "This may take a moment depending on your endpoint",
+    "CR_Popup_ClosePlaceholder": "Close"
 }
