@@ -547,7 +547,7 @@ function initSettings() {
         });
     }
     if (templateArea) {
-        templateArea.addEventListener('blur', () => {
+        templateArea.addEventListener('input', () => {
             s.promptTemplate = templateArea.value;
             saveSettings();
         });
